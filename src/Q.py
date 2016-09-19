@@ -15,18 +15,16 @@ class Q:
             if action not in self.qMap[stateKey].keys():
                 self.qMap[stateKey][action] = defaultQ
             result[action] = self.qMap[stateKey][action]
-        return result
-
-   
+        return result- 
 
     def learn(self, previousState, action, currentState, reward, done):
         oldValue = self.calculate(previousState)[action]
-        learnedValue = self.getLearnedValue(currentState,reward) - oldValue
-        self.qMap[str(previousState)][action] = oldValue + self.learningRate * learnedValue
+        learnedValue = self.getLearnedValue(currentState,reward)
+        self.qMap[str(previousState)][action] = oldValue + self.learningRate * (learnedValue - oldValue) 
         if done :
             for action in range(self.env.action_space.n):
                 self.qMap[str(currentState)][action] = 0
-        print('Q: ',self.qMap[str(previousState)][action])
+      #  print('Q: ',self.qMap[str(previousState)][action])
         
     def getLearnedValue(self, currentState, reward):
         return reward + self.discountFactor * max(self.calculate(currentState))

@@ -53,14 +53,14 @@ class MainClass:
         while not done:
             state = discreteConverter.getState(observation)
             qValues = q.calculate(state)
-            action = self.chooseBestAction(qValues)
+            action = self.chooseRandomAction(qValues)
 
             newObservation, reward, done, info = env.step(action)
            
             newState = discreteConverter.getState(newObservation)
             q.learn(state, action, newState, reward, done)           
             self.episodeData.append([observation, action, newObservation, reward,done])
-            env.render()
+           #env.render()
             stepCounter += 1
         print(stepCounter)
 
