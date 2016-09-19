@@ -48,11 +48,7 @@ class Discretization:
 
     @staticmethod
     def equals(discretization1, discretization2):
-
-        result = (str(discretization1.high) == str(discretization2.high) and str(discretization1.low) == str(discretization2.low))
-        if result :
-            print("discretization equal")
-        else:
-            print(str(discretization1.high),str(discretization1.low))
-            print(str(discretization2.high), str(discretization2.low))
-        return result
+        equal = (str(discretization1.high) == str(discretization2.high) and str(discretization1.low) == str(discretization2.low))
+        if not equal :
+            print("discretization not equal")
+        return equal

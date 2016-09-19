@@ -28,20 +28,17 @@ class MainClass:
         q = Q(env)
         discreter = Discretization.createDefault(env.observation_space.high, env.observation_space.low)
 
-        self.loadEpisodeData()
+      #  self.loadEpisodeData()
         iterate = 0
         while True:
             observation = env.reset()
             self.runEpisode(env, observation, q, discreter)
-            self.learnFromPreviousExperience(q)
+            self.learnFromPreviousExperience(q,discreter)
             newDiscreter = Discretization.create([ed[0] for ed in self.episodeData])
             if not Discretization.equals(newDiscreter,discreter):
                 q = Q(env)
-                discreter = newDiscreter
-            print('new episode')
-            iterate+=1
-            if iterate % 100 == 0:
-               self.saveEpisdeData()
+                discreter = newDiscreter            
+            iterate+=1          
 
     def saveEpisodeData(self):
         file = open("episodeData.dat", "w")
@@ -56,7 +53,7 @@ class MainClass:
         while not done:
             state = discreteConverter.getState(observation)
             qValues = q.calculate(state)
-            action = self.chooseRandomAction(qValues)
+            action = self.chooseBestAction(qValues)
 
             newObservation, reward, done, info = env.step(action)
 
@@ -67,9 +64,9 @@ class MainClass:
             stepCounter += 1
         print(stepCounter)
 
-    def learnFromPreviousExperience(self, q):
+    def learnFromPreviousExperience(self, q, discreter):
         for example in self.episodeData:
-            q.learn(example[0],example[1],example[2],example[3])
+            q.learn(discreter.getState(example[0]),example[1],discreter.getState(example[2]),example[3])
 
 
 def main(args=None):

@@ -3,10 +3,10 @@ class Q:
         self.env = env
 
     learningRate = 1
-    discountFactor = 0.9
+    discountFactor = 0.5
     qMap = {}
     def calculate(self, state):
-        defaultQ = 1
+        defaultQ = 100
         result = [None]*self.env.action_space.n
         stateKey = str(state)
         if stateKey not in self.qMap.keys():
@@ -19,7 +19,10 @@ class Q:
 
     def learn(self, previousState, action, currentState, reward):
         oldValue = self.calculate(previousState)[action]
-        result = oldValue + self.learningRate * (self.getLearnedValue(currentState,reward) - oldValue)
+        learnedValue = self.getLearnedValue(currentState,reward) - oldValue
+        self.qMap[str(previousState)][action] = oldValue + self.learningRate * learnedValue
+        print('LearnedValue: ',learnedValue,' Reward: ',reward)
+        
     def getLearnedValue(self, currentState, reward):
         return reward + self.discountFactor * max(self.calculate(currentState))
 
