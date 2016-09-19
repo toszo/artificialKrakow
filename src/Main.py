@@ -30,10 +30,12 @@ class MainClass:
         discreter = Discretization.load()
         self.load()
 
-        iterate = 0
+        iteration = 0
+        allSteps = []
         while True:
             observation = env.reset()
-            self.runEpisode(env, observation, q, discreter)
+            steps = self.runEpisode(env, observation, q, discreter)
+            allSteps.append(steps)
             self.learnFromPreviousExperience(q, discreter)
             allHistoricObservations = [episode['observation'] for episode in self.episodeData]
             changed = discreter.update(allHistoricObservations)
@@ -42,11 +44,12 @@ class MainClass:
                 q.save()
                 discreter.save()   
                 print('new discretization.dat saved')       
-            iterate+=1  
-            if iterate % 1 == 0:
+            iteration += 1  
+            if iteration % 100 == 0:
                 q.save() 
                 self.save()      
-                print('saved q.dat and episodeData.dat') 
+                print('iteration:'+str(iteration)+', steps(avg):'+str(float(sum(allSteps))/len(allSteps)))
+                allSteps = [] 
 
     fileName = 'episodeData.dat'
     def save(self):
@@ -62,7 +65,7 @@ class MainClass:
 
     def runEpisode(self, env, observation, q, discreteConverter):
         done = False
-        stepCounter = 0
+        steps = 0
         while not done:
             state = discreteConverter.getState(observation)
             qValues = q.calculate(state)
@@ -73,12 +76,13 @@ class MainClass:
             newState = discreteConverter.getState(newObservation)
             q.learn(state, action, newState, reward, done)           
             self.episodeData.append({'observation':observation, 'action':action, 'newObservation':newObservation, 'reward':reward, 'done':done})
-            env.render()
-            stepCounter += 1
+            #env.render()
+            steps += 1
+        return steps
         
 
     def learnFromPreviousExperience(self, q, discreter):
-        for _ in range(len(self.episodeData) * 10):
+        for _ in range(len(self.episodeData) * 1):
             index = random.randint(0, len(self.episodeData)-1)
             episode = self.episodeData[index]
             q.learn(discreter.getState(episode['observation']), episode['action'], discreter.getState(episode['newObservation']), episode['reward'], episode['done'])

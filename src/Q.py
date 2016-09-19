@@ -6,8 +6,9 @@ class Q:
     def __init__(self, env):
         self.env = env
         self.qMap = {}
-        self.learningRate = 1
+        self.learningRate = 0.1
         self.discountFactor = 0.9
+        self.defaultQ = 1
 
     def save(self):
         with open(Q.fileName, 'wb') as output:
@@ -24,21 +25,23 @@ class Q:
             return q
 
     def calculate(self, state):
-        defaultQ = 100
         result = [None]*self.env.action_space.n
         stateKey = str(state)
         if stateKey not in self.qMap.keys():
             self.qMap[stateKey] = dict()
         for action in range(self.env.action_space.n):
             if action not in self.qMap[stateKey].keys():
-                self.qMap[stateKey][action] = defaultQ
+                self.qMap[stateKey][action] = self.defaultQ
             result[action] = self.qMap[stateKey][action]
         return result
 
     def learn(self, previousState, action, currentState, reward, done):
         oldValue = self.calculate(previousState)[action]
         learnedValue = self.getLearnedValue(currentState, reward)
-        self.qMap[str(previousState)][action] = oldValue + self.learningRate * (learnedValue - oldValue) 
+        newValue = oldValue + self.learningRate * (learnedValue - oldValue)
+        #if oldValue != learnedValue:
+            #print('Old: ' + str(oldValue) + ', New: ' + str(newValue))
+        self.qMap[str(previousState)][action] = newValue
         if done:
             for action in range(self.env.action_space.n):
                 self.qMap[str(currentState)][action] = 0
