@@ -1,5 +1,6 @@
 import random
-#import cPickle
+import os.path
+import pickle
 import gym
 
 from Discretization import Discretization
@@ -27,6 +28,7 @@ class MainClass:
         env = gym.make('CartPole-v0')
         q = Q.load(env)
         discreter = Discretization.load()
+        self.load()
 
         iterate = 0
         while True:
@@ -41,14 +43,20 @@ class MainClass:
                 print('new discretization.dat saved')       
             iterate+=1  
             if iterate % 10 == 0:
-                q.save()        
+                q.save() 
+                self.save()       
 
-    # def saveEpisodeData(self):
-    #     file = open("episodeData.dat", "w")
-    #     file.write(cPickle.dumps(self.episodeData))
+    fileName = 'episodeData.dat'
+    def save(self):
+        with open(MainClass.fileName, 'wb') as output:
+            pickle.dump(self.episodeData, output, pickle.HIGHEST_PROTOCOL)
 
-    # def loadEpisodeData(self):
-    #     self.episodeData = cPickle.load(open("episodeData.dat","rb"))
+    def load(self):
+        if not os.path.isfile(MainClass.fileName):
+            self.episodeData = []
+        else:
+            with open(MainClass.fileName, 'rb') as input:
+                self.episodeData = pickle.load(input)
 
     def runEpisode(self, env, observation, q, discreteConverter):
         done = False
@@ -63,7 +71,7 @@ class MainClass:
             newState = discreteConverter.getState(newObservation)
             q.learn(state, action, newState, reward, done)           
             self.episodeData.append([observation, action, newObservation, reward,done])
-            #env.render()
+            env.render()
             stepCounter += 1
         
 

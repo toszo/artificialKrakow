@@ -42,7 +42,6 @@ class Q:
         if done:
             for action in range(self.env.action_space.n):
                 self.qMap[str(currentState)][action] = 0
-      #  print('Q: ',self.qMap[str(previousState)][action])
         
     def getLearnedValue(self, currentState, reward):
         return reward + self.discountFactor * max(self.calculate(currentState))
