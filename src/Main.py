@@ -9,7 +9,8 @@ from Q import Q
 class MainClass:
     def __init__(self):        
         self.episodeData = []
-    def chooseAction(self, qValues):
+
+    def chooseRandomAction(self, qValues):
         randValue = random.random() * sum(qValues)
         index = 0
         for value in qValues:
@@ -17,6 +18,10 @@ class MainClass:
                 return index
             randValue -= value
             index += 1
+
+    def chooseBestAction(self, qValues):
+        return qValues.index(max(qValues))
+
 
     def execute(self):
         env = gym.make('CartPole-v0')
@@ -51,7 +56,7 @@ class MainClass:
         while not done:
             state = discreteConverter.getState(observation)
             qValues = q.calculate(state)
-            action = self.chooseAction(qValues)
+            action = self.chooseRandomAction(qValues)
 
             newObservation, reward, done, info = env.step(action)
 
