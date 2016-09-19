@@ -29,11 +29,30 @@ class Discretization:
         result = [None] * len(self.high)
 
         for i in range(len(self.high)):
+            if observation[i] < self.low[i]:
+                result[i] =0
+                continue
+            if observation[i] >= self.high[i]:
+                result[i] = len(self.high) - 1
+                continue
+
             dx = (self.high[i] - self.low[i]) / RANGES
             step = self.low[i]
+
             num = 0
-            while (observation[i] > step):
+            while (observation[i] >= step):
                 step += dx
                 num += 1
             result[i] = num
+        return result
+
+    @staticmethod
+    def equals(discretization1, discretization2):
+
+        result = (str(discretization1.high) == str(discretization2.high) and str(discretization1.low) == str(discretization2.low))
+        if result :
+            print("discretization equal")
+        else:
+            print(str(discretization1.high),str(discretization1.low))
+            print(str(discretization2.high), str(discretization2.low))
         return result

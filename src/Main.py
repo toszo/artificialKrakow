@@ -22,12 +22,15 @@ class MainClass:
     def execute(self):
         env = gym.make('CartPole-v0')
         q = Q(env)
-        discreteConverter = Discretization.createDefault(env.observation_space.high, env.observation_space.low)
+        discreter = Discretization.createDefault(env.observation_space.high, env.observation_space.low)
         while True:
             observation = env.reset()
-            self.runEpisode(env, observation, q, discreteConverter)
+            self.runEpisode(env, observation, q, discreter)
             self.learnFromPreviousExperience(q)
-            discreteConverter = Discretization.create(self.observations)
+            newDiscreter = Discretization.create(self.observations)
+            if not Discretization.equals(newDiscreter,discreter):
+                q = Q(env)
+                discreter = newDiscreter
             print('new episode')
     episodeData = []
 
