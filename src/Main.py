@@ -35,7 +35,7 @@ class MainClass:
                 discreter = newDiscreter
             print('new episode')
             iterate+=1
-            if itereate % 100 == 0:
+            if iterate % 100 == 0:
                self.saveEpisdeData()
 
     def saveEpisodeData(self):
@@ -43,9 +43,7 @@ class MainClass:
         file.write(cPickle.dumps(self.episodeData))
 
     def loadEpisodeData(self):
-        file = open("episodeData.dat","r")
-        strData = file.read()
-        episodeData = cPickle.load(strData)
+        self.episodeData = cPickle.load(open("episodeData.dat","rb"))
 
     def runEpisode(self, env, observation, q, discreteConverter):
         done = False
