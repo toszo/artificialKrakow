@@ -29,11 +29,12 @@ class MainClass:
         q = Q.load(env)
         discreter = Discretization.load()
         self.load()
-
+        self.clearCouterLog()
         iterate = 0
         while True:
             observation = env.reset()
-            self.runEpisode(env, observation, q, discreter)
+            reachedStepNumber = self.runEpisode(env, observation, q, discreter)
+            self.logCounter(iterate,reachedStepNumber)
             self.learnFromPreviousExperience(q, discreter)
             allHistoricObservations = [episode['observation'] for episode in self.episodeData]
             changed = discreter.update(allHistoricObservations)
@@ -48,16 +49,27 @@ class MainClass:
                 self.save()      
                 print('saved q.dat and episodeData.dat') 
 
-    fileName = 'episodeData.dat'
+    fileName = 'episodeData.dat'   
+    counterFileName = 'counter.dat'
+
+    def clearCouterLog(self):
+        file = open(self.counterFileName,"w")
+        file.seek(0)
+        file.truncate()
+
+    def logCounter(self,iterate,number):
+        file = open(self.counterFileName,"a")
+        file.write(str(iterate)+" "+str(number)+"\n")
+
     def save(self):
-        with open(MainClass.fileName, 'wb') as output:
+        with open(self.fileName, 'wb') as output:
             pickle.dump(self.episodeData, output, pickle.HIGHEST_PROTOCOL)
 
     def load(self):
         if not os.path.isfile(MainClass.fileName):
             self.episodeData = []
         else:
-            with open(MainClass.fileName, 'rb') as input:
+            with open(self.fileName, 'rb') as input:
                 self.episodeData = pickle.load(input)
 
     def runEpisode(self, env, observation, q, discreteConverter):
@@ -76,9 +88,9 @@ class MainClass:
             
             #nowa obserwacja staje sie biezaca
             observation = newObservation
-            env.render()
+            #env.render()
             stepCounter += 1
-        
+        return stepCounter
 
     def learnFromPreviousExperience(self, q, discreter):
         for _ in range(len(self.episodeData) * 10):
