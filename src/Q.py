@@ -15,7 +15,7 @@ class Q:
             if action not in self.qMap[stateKey].keys():
                 self.qMap[stateKey][action] = defaultQ
             result[action] = self.qMap[stateKey][action]
-        return result- 
+        return result
 
     def learn(self, previousState, action, currentState, reward, done):
         oldValue = self.calculate(previousState)[action]
