@@ -2,22 +2,22 @@ import os.path
 import pickle
 
 class Discretization:
+    def __init__(self, high, low):
+        self.high = high
+        self.low = low
+
     fileName = "discretization.dat"
     def save(self):
         with open(Discretization.fileName, 'wb') as output:
-            pickle.dump({'high': self.high, 'low':self.low}, output, pickle.HIGHEST_PROTOCOL)
+            pickle.dump({'high':self.high,'low':self.low}, output, pickle.HIGHEST_PROTOCOL)
      
     @staticmethod
     def load():
         if not os.path.isfile(Discretization.fileName):
-            raise Exception('Discretization file not found')
+            raise Exception('discretization.dat not found')
         with open(Discretization.fileName, 'rb') as input:
             config = pickle.load(input)
             return Discretization(config['high'], config['low'])
-
-    def __init__(self, high, low):
-        self.high = high
-        self.low = low
 
     def getState(self, observation):
         RANGES = 10

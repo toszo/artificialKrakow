@@ -25,22 +25,23 @@ class MainClass:
 
     def execute(self):
         env = gym.make('CartPole-v0')
-        q = Q(env)
+        q = Q.load(env)
         discreter = Discretization.load()
 
-      #  self.loadEpisodeData()
         iterate = 0
         while True:
             observation = env.reset()
             self.runEpisode(env, observation, q, discreter)
-            self.learnFromPreviousExperience(q,discreter)
+            self.learnFromPreviousExperience(q, discreter)
             allHistoricObservations = [episode[0] for episode in self.episodeData]
             changed = discreter.update(allHistoricObservations)
             if changed:
                 q = Q(env)
                 discreter.save()   
                 print('new discretization.dat saved')       
-            iterate+=1          
+            iterate+=1  
+            if iterate % 10 == 0:
+                q.save()        
 
     # def saveEpisodeData(self):
     #     file = open("episodeData.dat", "w")
