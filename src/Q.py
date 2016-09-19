@@ -3,7 +3,7 @@ class Q:
         self.env = env
 
     learningRate = 1
-    discountFactor = 0.2
+    discountFactor = 0.9
     qMap = {}
     def calculate(self, state):
         defaultQ = 1

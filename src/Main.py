@@ -1,5 +1,5 @@
 import random
-
+import cPickle
 import gym
 
 from Discretization import Discretization
@@ -7,9 +7,8 @@ from Q import Q
 
 
 class MainClass:
-    def __init__(self):
-        self.observations = []
-
+    def __init__(self):        
+        self.episodeData = []
     def chooseAction(self, qValues):
         randValue = random.random() * sum(qValues)
         index = 0
@@ -23,16 +22,30 @@ class MainClass:
         env = gym.make('CartPole-v0')
         q = Q(env)
         discreter = Discretization.createDefault(env.observation_space.high, env.observation_space.low)
+
+        self.loadEpisodeData()
+        iterate = 0
         while True:
             observation = env.reset()
             self.runEpisode(env, observation, q, discreter)
             self.learnFromPreviousExperience(q)
-            newDiscreter = Discretization.create(self.observations)
+            newDiscreter = Discretization.create([ed[0] for ed in self.episodeData])
             if not Discretization.equals(newDiscreter,discreter):
                 q = Q(env)
                 discreter = newDiscreter
             print('new episode')
-    episodeData = []
+            iterate+=1
+            if itereate % 100 == 0:
+               self.saveEpisdeData()
+
+    def saveEpisodeData(self):
+        file = open("episodeData.dat", "w")
+        file.write(cPickle.dumps(self.episodeData))
+
+    def loadEpisodeData(self):
+        file = open("episodeData.dat","r")
+        strData = file.read()
+        episodeData = cPickle.load(strData)
 
     def runEpisode(self, env, observation, q, discreteConverter):
         done = False
@@ -45,8 +58,7 @@ class MainClass:
             newObservation, reward, done, info = env.step(action)
 
             newState = discreteConverter.getState(newObservation)
-            q.learn(state, action, newState, reward)
-            self.observations.append(observation)
+            q.learn(state, action, newState, reward)           
             self.episodeData.append([observation, action, newObservation, reward])
             env.render()
             stepCounter += 1
