@@ -35,16 +35,18 @@ class MainClass:
             observation = env.reset()
             self.runEpisode(env, observation, q, discreter)
             self.learnFromPreviousExperience(q, discreter)
-            allHistoricObservations = [episode[0] for episode in self.episodeData]
+            allHistoricObservations = [episode['observation'] for episode in self.episodeData]
             changed = discreter.update(allHistoricObservations)
             if changed:
                 q = Q(env)
+                q.save()
                 discreter.save()   
                 print('new discretization.dat saved')       
             iterate+=1  
-            if iterate % 10 == 0:
+            if iterate % 1 == 0:
                 q.save() 
-                self.save()       
+                self.save()      
+                print('saved q.dat and episodeData.dat') 
 
     fileName = 'episodeData.dat'
     def save(self):
@@ -70,14 +72,16 @@ class MainClass:
            
             newState = discreteConverter.getState(newObservation)
             q.learn(state, action, newState, reward, done)           
-            self.episodeData.append([observation, action, newObservation, reward,done])
+            self.episodeData.append({'observation':observation, 'action':action, 'newObservation':newObservation, 'reward':reward, 'done':done})
             env.render()
             stepCounter += 1
         
 
     def learnFromPreviousExperience(self, q, discreter):
-        for example in self.episodeData:
-            q.learn(discreter.getState(example[0]),example[1],discreter.getState(example[2]),example[3],example[4])
+        for _ in range(len(self.episodeData) * 10):
+            index = random.randint(0, len(self.episodeData)-1)
+            episode = self.episodeData[index]
+            q.learn(discreter.getState(episode['observation']), episode['action'], discreter.getState(episode['newObservation']), episode['reward'], episode['done'])
 
 
 def main(args=None):
