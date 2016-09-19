@@ -21,7 +21,7 @@ class Q:
         oldValue = self.calculate(previousState)[action]
         learnedValue = self.getLearnedValue(currentState,reward) - oldValue
         self.qMap[str(previousState)][action] = oldValue + self.learningRate * learnedValue
-        print('LearnedValue: ',learnedValue,' Reward: ',reward)
+        print('Q: ',self.qMap[str(previousState)][action],' Reward: ',reward)
         
     def getLearnedValue(self, currentState, reward):
         return reward + self.discountFactor * max(self.calculate(currentState))

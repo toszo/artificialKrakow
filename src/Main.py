@@ -1,5 +1,5 @@
 import random
-import cPickle
+#import cPickle
 import gym
 
 from Discretization import Discretization
@@ -40,12 +40,12 @@ class MainClass:
                 discreter = newDiscreter            
             iterate+=1          
 
-    def saveEpisodeData(self):
-        file = open("episodeData.dat", "w")
-        file.write(cPickle.dumps(self.episodeData))
+    # def saveEpisodeData(self):
+    #     file = open("episodeData.dat", "w")
+    #     file.write(cPickle.dumps(self.episodeData))
 
-    def loadEpisodeData(self):
-        self.episodeData = cPickle.load(open("episodeData.dat","rb"))
+    # def loadEpisodeData(self):
+    #     self.episodeData = cPickle.load(open("episodeData.dat","rb"))
 
     def runEpisode(self, env, observation, q, discreteConverter):
         done = False
