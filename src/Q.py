@@ -5,6 +5,9 @@ class Q:
     fileName = "q.dat"
     def __init__(self, env):
         self.env = env
+        self.qMap = {}
+        self.learningRate = 1
+        self.discountFactor = 0.9
 
     def save(self):
         with open(Q.fileName, 'wb') as output:
@@ -20,9 +23,6 @@ class Q:
             q.qMap = qMap
             return q
 
-    learningRate = 1
-    discountFactor = 0.9
-    qMap = {}
     def calculate(self, state):
         defaultQ = 100
         result = [None]*self.env.action_space.n
