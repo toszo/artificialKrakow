@@ -15,7 +15,7 @@ class MainClass:
         randValue = random.random() * sum(qValues)
         index = 0
         for value in qValues:
-            if randValue < value:
+            if randValue <= value:
                 return index
             randValue -= value
             index += 1
@@ -29,6 +29,7 @@ class MainClass:
         q = Q.load(env)
         discreter = Discretization.load()
         self.load()
+        self.clearCouterLog()
 
         iteration = 0
         allSteps = []
@@ -36,6 +37,7 @@ class MainClass:
             observation = env.reset()
             steps = self.runEpisode(env, observation, q, discreter)
             allSteps.append(steps)
+            self.logCounter(iteration,steps)
             self.learnFromPreviousExperience(q, discreter)
             allHistoricObservations = [episode['observation'] for episode in self.episodeData]
             changed = discreter.update(allHistoricObservations)
@@ -51,7 +53,18 @@ class MainClass:
                 print('iteration:'+str(iteration)+', steps(avg):'+str(float(sum(allSteps))/len(allSteps)))
                 allSteps = [] 
 
-    fileName = 'episodeData.dat'
+    fileName = 'episodeData.dat'   
+    counterFileName = 'counter.dat'
+
+    def clearCouterLog(self):
+        file = open(self.counterFileName,"w")
+        file.seek(0)
+        file.truncate()
+
+    def logCounter(self,iterate,number):
+        file = open(self.counterFileName,"a")
+        file.write(str(iterate)+" "+str(number)+"\n")
+
     def save(self):
         with open(MainClass.fileName, 'wb') as output:
             pickle.dump(self.episodeData, output, pickle.HIGHEST_PROTOCOL)
@@ -76,10 +89,11 @@ class MainClass:
             newState = discreteConverter.getState(newObservation)
             q.learn(state, action, newState, reward, done)           
             self.episodeData.append({'observation':observation, 'action':action, 'newObservation':newObservation, 'reward':reward, 'done':done})
+
+            observation = newObservation
             #env.render()
             steps += 1
         return steps
-        
 
     def learnFromPreviousExperience(self, q, discreter):
         for _ in range(len(self.episodeData) * 1):
