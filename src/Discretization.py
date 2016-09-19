@@ -5,6 +5,7 @@ class Discretization:
     def __init__(self, high, low):
         self.high = high
         self.low = low
+        self.ranges = 100
 
     fileName = "discretization.dat"
     def save(self):
@@ -20,25 +21,19 @@ class Discretization:
             return Discretization(config['high'], config['low'])
 
     def getState(self, observation):
-        RANGES = 10
         result = [None] * len(self.high)
 
         for i in range(len(self.high)):
-            if observation[i] < self.low[i]:
-                result[i] =0
-                continue
-            if observation[i] >= self.high[i]:
-                result[i] = len(self.high) - 1
-                continue
-
-            dx = (self.high[i] - self.low[i]) / RANGES
+            dx = (self.high[i] - self.low[i]) / self.ranges
             step = self.low[i]
 
-            num = 0
-            while (observation[i] >= step):
-                step += dx
-                num += 1
-            result[i] = num
+            value = int((observation[i] - self.low[i]) / dx)
+            if value < 0: 
+                value = 0
+            elif value >= self.ranges: 
+                value = self.ranges - 1
+
+            result[i] = value
         return result
 
     def update(self, observations):
