@@ -28,6 +28,9 @@ class MainClass:
         env = gym.make('CartPole-v0')
         q = Q.load(env)
         discreter = Discretization.load()
+        print('discreter loaded')
+        print('  high:'+str(discreter.high))
+        print('   low:'+str(discreter.low))      
         self.load()
         self.clearCouterLog()
 
@@ -42,12 +45,16 @@ class MainClass:
             allHistoricObservations = [episode['observation'] for episode in self.episodeData]
             changed = discreter.update(allHistoricObservations)
             if changed:
+                iteration = 0
                 q = Q(env)
                 q.save()
                 discreter.save()   
-                print('new discretization.dat saved')       
+                print('new discretization.dat saved')
+                print('  high:'+str(discreter.high))
+                print('   low:'+str(discreter.low))      
+       
             iteration += 1  
-            if iteration % 100 == 0:
+            if iteration % 10 == 0:
                 q.save() 
                 self.save()      
                 print('iteration:'+str(iteration)+', steps(avg):'+str(float(sum(allSteps))/len(allSteps)))

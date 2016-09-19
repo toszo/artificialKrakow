@@ -5,7 +5,7 @@ class Discretization:
     def __init__(self, high, low):
         self.high = high
         self.low = low
-        self.ranges = 100
+        self.ranges = 10
 
     fileName = "discretization.dat"
     def save(self):
