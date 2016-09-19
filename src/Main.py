@@ -26,7 +26,7 @@ class MainClass:
     def execute(self):
         env = gym.make('CartPole-v0')
         q = Q(env)
-        discreter = Discretization.createDefault(env.observation_space.high, env.observation_space.low)
+        discreter = Discretization.load()
 
       #  self.loadEpisodeData()
         iterate = 0
@@ -34,10 +34,12 @@ class MainClass:
             observation = env.reset()
             self.runEpisode(env, observation, q, discreter)
             self.learnFromPreviousExperience(q,discreter)
-            newDiscreter = Discretization.create([ed[0] for ed in self.episodeData])
-            if not Discretization.equals(newDiscreter,discreter):
+            allHistoricObservations = [episode[0] for episode in self.episodeData]
+            changed = discreter.update(allHistoricObservations)
+            if changed:
                 q = Q(env)
-                discreter = newDiscreter            
+                discreter.save()   
+                print('new discretization.dat saved')       
             iterate+=1          
 
     # def saveEpisodeData(self):
@@ -60,9 +62,9 @@ class MainClass:
             newState = discreteConverter.getState(newObservation)
             q.learn(state, action, newState, reward, done)           
             self.episodeData.append([observation, action, newObservation, reward,done])
-           #env.render()
+            #env.render()
             stepCounter += 1
-        print(stepCounter)
+        
 
     def learnFromPreviousExperience(self, q, discreter):
         for example in self.episodeData:
