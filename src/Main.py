@@ -56,17 +56,17 @@ class MainClass:
             action = self.chooseBestAction(qValues)
 
             newObservation, reward, done, info = env.step(action)
-
+           
             newState = discreteConverter.getState(newObservation)
-            q.learn(state, action, newState, reward)           
-            self.episodeData.append([observation, action, newObservation, reward])
+            q.learn(state, action, newState, reward, done)           
+            self.episodeData.append([observation, action, newObservation, reward,done])
             env.render()
             stepCounter += 1
         print(stepCounter)
 
     def learnFromPreviousExperience(self, q, discreter):
         for example in self.episodeData:
-            q.learn(discreter.getState(example[0]),example[1],discreter.getState(example[2]),example[3])
+            q.learn(discreter.getState(example[0]),example[1],discreter.getState(example[2]),example[3],example[4])
 
 
 def main(args=None):
