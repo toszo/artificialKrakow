@@ -15,7 +15,7 @@ class MainClass:
         randValue = random.random() * sum(qValues)
         index = 0
         for value in qValues:
-            if randValue < value:
+            if randValue <= value:
                 return index
             randValue -= value
             index += 1
@@ -73,6 +73,9 @@ class MainClass:
             newState = discreteConverter.getState(newObservation)
             q.learn(state, action, newState, reward, done)           
             self.episodeData.append({'observation':observation, 'action':action, 'newObservation':newObservation, 'reward':reward, 'done':done})
+            
+            #nowa obserwacja staje sie biezaca
+            observation = newObservation
             env.render()
             stepCounter += 1
         
