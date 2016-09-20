@@ -20,8 +20,8 @@ class StateMapper:
     def load(dimensions, environmentName):
         stateMapper = StateMapper([], [], environmentName)
         if not os.path.isfile(stateMapper.fileName()):
-            stateMapper.high = [1] * dimensions
-            stateMapper.low = [0] * dimensions
+            stateMapper.high = [0.0001] * dimensions
+            stateMapper.low = [-0.0001] * dimensions
             return stateMapper
         with open(stateMapper.fileName(), 'rb') as input:
             config = pickle.load(input)

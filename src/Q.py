@@ -9,6 +9,8 @@ class Q:
         self.learningRate = 0.2
         self.discountFactor = 0.9
         self.defaultQ = 1
+        self.saveEveryIteration = 10000
+        self.iteration = 0
 
     def fileName(self):
         return self.environmentName + '.q.dat'
@@ -42,12 +44,16 @@ class Q:
         oldValue = self.calculate(previousState)[action]
         learnedValue = self.getLearnedValue(currentState, reward)
         newValue = oldValue + self.learningRate * (learnedValue - oldValue)
-        #if oldValue != learnedValue:
-            #print('Old: ' + str(oldValue) + ', New: ' + str(newValue))
         self.qMap[str(previousState)][action] = newValue
         if done:
             for action in range(self.env.action_space.n):
                 self.qMap[str(currentState)][action] = 0
+        
+        self.iteration += 1
+        if self.iteration % self.saveEveryIteration == 0:
+            self.save()
+            print('Q.learn iteration:'+str(self.iteration)+'. Q.qMap saved.')
+        
         
     def getLearnedValue(self, currentState, reward):
         return reward + self.discountFactor * max(self.calculate(currentState))
