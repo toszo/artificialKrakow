@@ -3,24 +3,31 @@ import pickle
 
 
 class StateMapper:
-    def __init__(self, high, low):
+    def __init__(self, high, low, environmentName):
         self.high = high
         self.low = low
+        self.environmentName = environmentName
         self.ranges = 10
 
-    fileName = "discretization.dat"
+    def fileName(self):
+        return self.environmentName + '.highs-lows.dat'
 
     def save(self):
-        with open(StateMapper.fileName, 'wb') as output:
+        with open(self.fileName(), 'wb') as output:
             pickle.dump({'high': self.high, 'low': self.low}, output, pickle.HIGHEST_PROTOCOL)
 
     @staticmethod
-    def load(dimensions):
-        if not os.path.isfile(StateMapper.fileName):
-            return StateMapper([1] * dimensions, [0] * dimensions)
-        with open(StateMapper.fileName, 'rb') as input:
+    def load(dimensions, environmentName):
+        stateMapper = StateMapper([], [], environmentName)
+        if not os.path.isfile(stateMapper.fileName()):
+            stateMapper.high = [1] * dimensions
+            stateMapper.low = [0] * dimensions
+            return stateMapper
+        with open(stateMapper.fileName(), 'rb') as input:
             config = pickle.load(input)
-            return StateMapper(config['high'], config['low'])
+            stateMapper.high = config['high']
+            stateMapper.low = config['low']
+            return stateMapper
 
     def getState(self, observation):
         result = [None] * len(self.high)

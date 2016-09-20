@@ -4,14 +4,15 @@ import random
 
 import gym
 
-from shared.StateMapper import StateMapper
-from shared.Q import Q
+from StateMapper import StateMapper
+from Q import Q
 
 
 class MainClass:
-    def __init__(self):
+    def __init__(self, environmentName):
         self.episodeData = []
         self.episodeIndex = dict()
+        self.environmentName = environmentName
 
     def chooseRandomAction(self, qValues):
         return random.randint(0, len(qValues) - 1)
@@ -30,11 +31,11 @@ class MainClass:
             action = self.chooseRandomAction(qValues)
         return action
 
-    def execute(self, environmentName):
-        env = gym.make(environmentName)
-        q = Q.load(env)
-        discreter = StateMapper.load(len(env.observation_space.high))
-        print('discreter loaded')
+    def execute(self):
+        env = gym.make(self.environmentName)
+        q = Q.load(env, self.environmentName)
+        discreter = StateMapper.load(len(env.observation_space.high), self.environmentName)
+        print('StateMapper configuration loaded')
         print('  high:'+str(discreter.high))
         print('   low:'+str(discreter.low))
         self.load(discreter)
@@ -52,10 +53,10 @@ class MainClass:
             changed = discreter.update(allHistoricObservations)
             if changed:
                 iteration = 0
-                q = Q(env)
+                q = Q(env, self.environmentName)
                 q.save()
                 discreter.save()
-                print('new discretization.dat saved')
+                print('New StateMapper configuration saved')
                 print('  high:'+str(discreter.high))
                 print('   low:'+str(discreter.low))
 
