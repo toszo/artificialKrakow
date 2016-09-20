@@ -8,6 +8,7 @@ class StateMapper:
         self.low = low
         self.environmentName = environmentName
         self.ranges = 10
+        self.extendRangePercent = 0.1
 
     def fileName(self):
         return self.environmentName + '.highs-lows.dat'
@@ -16,12 +17,18 @@ class StateMapper:
         with open(self.fileName(), 'wb') as output:
             pickle.dump({'high': self.high, 'low': self.low}, output, pickle.HIGHEST_PROTOCOL)
 
+    def extendVector(self):
+        deltas = [h - l for h, l in zip(self.high, self.low)]
+        deltas = [d * self.extendRangePercent for d in deltas]
+        self.high = [h + d for h, d in zip(self.high, deltas)]
+        self.low = [l - d for l, d in zip(self.low, deltas)]
+
     @staticmethod
     def load(dimensions, environmentName):
         stateMapper = StateMapper([], [], environmentName)
         if not os.path.isfile(stateMapper.fileName()):
-            stateMapper.high = [1] * dimensions
-            stateMapper.low = [0] * dimensions
+            stateMapper.high = [0.0001] * dimensions
+            stateMapper.low = [-0.0001] * dimensions
             return stateMapper
         with open(stateMapper.fileName(), 'rb') as input:
             config = pickle.load(input)

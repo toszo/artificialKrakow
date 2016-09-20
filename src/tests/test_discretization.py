@@ -1,6 +1,7 @@
 from unittest import TestCase
 
-from shared.StateMapper import StateMapper
+from StateMapper import StateMapper
+
 
 class TestStateMapper(TestCase):
     def test_getState(self):
@@ -60,3 +61,19 @@ class TestStateMapper(TestCase):
         actual = mapper.update([[11,1]])
 
         self.assertTrue(actual)
+
+    def test_extend_high_by_delta(self):
+        mapper = StateMapper([10],[0], '')
+        mapper.extendRangePercent = 0.1
+        mapper.extendVector()
+        actual = mapper.high[0]
+
+        self.assertEquals(actual,11)
+
+    def test_extend_low_by_delta(self):
+        mapper = StateMapper([10], [0], '')
+        mapper.extendRangePercent = 0.1
+        mapper.extendVector()
+        actual = mapper.low[0]
+
+        self.assertEquals(actual,-1)

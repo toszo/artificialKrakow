@@ -13,6 +13,8 @@ class MainClass:
         self.episodeData = []
         self.episodeIndex = dict()
         self.environmentName = environmentName
+        self.steps = 0
+        self.saveEverySteps = 1000
 
     def chooseRandomAction(self, qValues):
         return random.randint(0, len(qValues) - 1)
@@ -38,16 +40,12 @@ class MainClass:
         print('StateMapper configuration loaded')
         print('  high:'+str(discreter.high))
         print('   low:'+str(discreter.low))
-        self.load(discreter)
+        self.loadEpisodeData(discreter)
         self.clearCouterLog()
 
-        iteration = 0
-        allSteps = []
         while True:
             observation = env.reset()
-            steps = self.runEpisode(env, observation, q, discreter)
-            allSteps.append(steps)
-            self.logCounter(iteration,steps)
+            self.runEpisode(env, observation, q, discreter)
             self.learnFromPreviousExperience(q, discreter)
             allHistoricObservations = [episode['observation'] for episode in self.episodeData]
             changed = discreter.update(allHistoricObservations)
@@ -55,46 +53,44 @@ class MainClass:
                 iteration = 0
                 q = Q(env, self.environmentName)
                 q.save()
+                discreter.extendVector()
                 discreter.save()
                 print('New StateMapper configuration saved')
                 print('  high:'+str(discreter.high))
                 print('   low:'+str(discreter.low))
 
-            iteration += 1
-            if iteration % 10 == 0:
-                q.save()
-                self.save()
-                print('iteration:'+str(iteration)+', steps(avg):'+str(float(sum(allSteps))/len(allSteps)))
-                allSteps = []
-
-    fileName = 'episodeData.dat'
-    counterFileName = 'counter.dat'
+    def counterFileName(self):
+        return self.environmentName + '.counter.dat'
 
     def clearCouterLog(self):
-        file = open(self.counterFileName,"w")
+        file = open(self.counterFileName(),"w")
         file.seek(0)
         file.truncate()
 
-    def logCounter(self,iterate,number):
-        file = open(self.counterFileName,"a")
-        file.write(str(iterate)+" "+str(number)+"\n")
+    def logCounter(self,steps):
+        file = open(self.counterFileName(),"a")
+        file.write(str(steps)+"\n")
 
-    def save(self):
-        with open(MainClass.fileName, 'wb') as output:
+
+    def episodeDataFileName(self):
+        return self.environmentName + '.episodeData.dat'
+        
+    def saveEpisodeData(self):
+        with open(self.episodeDataFileName(), 'wb') as output:
             pickle.dump(self.episodeData, output, pickle.HIGHEST_PROTOCOL)
 
-    def load(self, discreter):
-        if not os.path.isfile(MainClass.fileName):
+    def loadEpisodeData(self, discreter):
+        if not os.path.isfile(self.episodeDataFileName()):
             self.episodeData = []
         else:
-            with open(MainClass.fileName, 'rb') as input:
+            with open(self.episodeDataFileName(), 'rb') as input:
                 self.episodeData = pickle.load(input)
         for episode in self.episodeData:
             self.updateEpisodeIndex(episode, discreter)
 
+
     def runEpisode(self, env, observation, q, discreter):
         done = False
-        steps = 0
         while not done:
             state = discreter.getState(observation)
             qValues = q.calculate(state)
@@ -109,8 +105,13 @@ class MainClass:
 
             observation = newObservation
             env.render()
-            steps += 1
-        return steps
+            self.steps += 1
+            if self.steps % self.saveEverySteps == 0:
+                self.saveEpisodeData()
+                print('Steps:'+str(self.steps)+'. Episode data saved.')
+
+        self.logCounter(self.steps)
+        
 
     def saveEpisode(self, episode, discreter):
         self.episodeData.append(episode)
