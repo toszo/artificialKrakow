@@ -53,6 +53,7 @@ class MainClass:
                 iteration = 0
                 q = Q(env, self.environmentName)
                 q.save()
+                discreter.extendVector()
                 discreter.save()
                 print('New StateMapper configuration saved')
                 print('  high:'+str(discreter.high))
