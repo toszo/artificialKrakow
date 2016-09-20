@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from StateMapper import StateMapper
+from shared.StateMapper import StateMapper
 
 class TestStateMapper(TestCase):
     def test_getState(self):

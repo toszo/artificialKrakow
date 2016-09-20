@@ -1,24 +1,33 @@
 import os.path
 import pickle
 
+
 class StateMapper:
-    def __init__(self, high, low):
+    def __init__(self, high, low, environmentName):
         self.high = high
         self.low = low
+        self.environmentName = environmentName
         self.ranges = 10
 
-    fileName = "discretization.dat"
+    def fileName(self):
+        return self.environmentName + '.highs-lows.dat'
+
     def save(self):
-        with open(StateMapper.fileName, 'wb') as output:
-            pickle.dump({'high':self.high,'low':self.low}, output, pickle.HIGHEST_PROTOCOL)
-     
+        with open(self.fileName(), 'wb') as output:
+            pickle.dump({'high': self.high, 'low': self.low}, output, pickle.HIGHEST_PROTOCOL)
+
     @staticmethod
-    def load():
-        if not os.path.isfile(StateMapper.fileName):
-            raise Exception('discretization.dat not found')
-        with open(StateMapper.fileName, 'rb') as input:
+    def load(dimensions, environmentName):
+        stateMapper = StateMapper([], [], environmentName)
+        if not os.path.isfile(stateMapper.fileName()):
+            stateMapper.high = [1] * dimensions
+            stateMapper.low = [0] * dimensions
+            return stateMapper
+        with open(stateMapper.fileName(), 'rb') as input:
             config = pickle.load(input)
-            return StateMapper(config['high'], config['low'])
+            stateMapper.high = config['high']
+            stateMapper.low = config['low']
+            return stateMapper
 
     def getState(self, observation):
         result = [None] * len(self.high)
@@ -28,9 +37,9 @@ class StateMapper:
             step = self.low[i]
 
             value = int((observation[i] - self.low[i]) / dx)
-            if value < 0: 
+            if value < 0:
                 value = 0
-            elif value >= self.ranges: 
+            elif value >= self.ranges:
                 value = self.ranges - 1
 
             result[i] = value

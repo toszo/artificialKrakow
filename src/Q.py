@@ -2,25 +2,28 @@ import os.path
 import pickle
 
 class Q:
-    fileName = "q.dat"
-    def __init__(self, env):
+    def __init__(self, env, environmentName):
         self.env = env
+        self.environmentName = environmentName
         self.qMap = {}
         self.learningRate = 0.2
         self.discountFactor = 0.9
         self.defaultQ = 1
 
+    def fileName(self):
+        return self.environmentName + '.q.dat'
+
     def save(self):
-        with open(Q.fileName, 'wb') as output:
+        with open(self.fileName(), 'wb') as output:
             pickle.dump(self.qMap, output, pickle.HIGHEST_PROTOCOL)
 
     @staticmethod
-    def load(env):
-        if not os.path.isfile(Q.fileName):
-            return Q(env)
-        with open(Q.fileName, 'rb') as input:
+    def load(env, environmentName):
+        q = Q(env, environmentName)
+        if not os.path.isfile(q.fileName()):
+            return q
+        with open(q.fileName(), 'rb') as input:
             qMap = pickle.load(input)
-            q = Q(env)
             q.qMap = qMap
             return q
 
