@@ -24,6 +24,15 @@ class MainClass:
     def chooseBestAction(self, qValues):
         return qValues.index(max(qValues))
 
+    def chooseActionBasedOnIndex(self,qValues,state):
+        indexValues = [len(value) for value in self.episodeIndex.values()]
+        avg = sum(indexValues)/len(indexValues)
+        
+        if (str(state) in self.episodeIndex.keys() and len(self.episodeIndex[str(state)]) > avg):
+            action = self.chooseBestAction(qValues)
+        else:
+            action = self.chooseRandomAction(qValues)
+        return action
 
     def execute(self):
         env = gym.make('CartPole-v0')
@@ -39,7 +48,7 @@ class MainClass:
         allSteps = []
         while True:
             observation = env.reset()
-            steps = self.runEpisode(env, observation, q, discreter, iteration)
+            steps = self.runEpisode(env, observation, q, discreter)
             allSteps.append(steps)
             self.logCounter(iteration,steps)
             self.learnFromPreviousExperience(q, discreter)
@@ -86,16 +95,14 @@ class MainClass:
         for episode in self.episodeData:
             self.updateEpisodeIndex(episode, discreter)
 
-    def runEpisode(self, env, observation, q, discreter iterationCount):
+    def runEpisode(self, env, observation, q, discreter):
         done = False
         steps = 0
         while not done:
             state = discreter.getState(observation)
             qValues = q.calculate(state)
-            if (iterationCount < 100):
-                action = self.chooseRandomAction(qValues)
-            else:
-                action = self.chooseBestAction(qValues)
+
+            action = self.chooseActionBasedOnIndex(qValues,state)
 
             newObservation, reward, done, info = env.step(action)
            

@@ -6,7 +6,7 @@ class Q:
     def __init__(self, env):
         self.env = env
         self.qMap = {}
-        self.learningRate = 0.1
+        self.learningRate = 0.2
         self.discountFactor = 0.9
         self.defaultQ = 1
 
