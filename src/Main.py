@@ -10,6 +10,7 @@ from Q import Q
 class MainClass:
     def __init__(self):        
         self.episodeData = []
+        self.episodeIndex = dict()
 
     def chooseRandomAction(self, qValues):
         randValue = random.random() * sum(qValues)
@@ -30,8 +31,8 @@ class MainClass:
         discreter = Discretization.load()
         print('discreter loaded')
         print('  high:'+str(discreter.high))
-        print('   low:'+str(discreter.low))      
-        self.load()
+        print('   low:'+str(discreter.low))  
+        self.load(discreter)
         self.clearCouterLog()
 
         iteration = 0
@@ -76,36 +77,50 @@ class MainClass:
         with open(MainClass.fileName, 'wb') as output:
             pickle.dump(self.episodeData, output, pickle.HIGHEST_PROTOCOL)
 
-    def load(self):
+    def load(self, discreter):
         if not os.path.isfile(MainClass.fileName):
             self.episodeData = []
         else:
             with open(MainClass.fileName, 'rb') as input:
                 self.episodeData = pickle.load(input)
+        for episode in self.episodeData:
+            self.updateEpisodeIndex(episode, discreter)
 
-    def runEpisode(self, env, observation, q, discreteConverter):
+    def runEpisode(self, env, observation, q, discreter):
         done = False
         steps = 0
         while not done:
-            state = discreteConverter.getState(observation)
+            state = discreter.getState(observation)
             qValues = q.calculate(state)
-            action = self.chooseRandomAction(qValues)
+            action = self.chooseBestAction(qValues)
 
             newObservation, reward, done, info = env.step(action)
            
-            newState = discreteConverter.getState(newObservation)
+            newState = discreter.getState(newObservation)
             q.learn(state, action, newState, reward, done)           
-            self.episodeData.append({'observation':observation, 'action':action, 'newObservation':newObservation, 'reward':reward, 'done':done})
+            self.saveEpisode({'observation':observation, 'action':action, 'newObservation':newObservation, 'reward':reward, 'done':done}, discreter)
 
             observation = newObservation
-            #env.render()
+            env.render()
             steps += 1
         return steps
 
+    def saveEpisode(self, episode, discreter):
+        self.episodeData.append(episode)
+        self.updateEpisodeIndex(episode, discreter)
+    def updateEpisodeIndex(self, episode, discreter):
+        stateKey = str(discreter.getState(episode['observation']))
+        if not stateKey in self.episodeIndex.keys():
+            self.episodeIndex[stateKey] = []
+        self.episodeIndex[stateKey].append(episode)
+
+
     def learnFromPreviousExperience(self, q, discreter):
-        for _ in range(len(self.episodeData) * 1):
-            index = random.randint(0, len(self.episodeData)-1)
-            episode = self.episodeData[index]
+        for _ in range(len(self.episodeIndex.keys()) * 10):
+            indexKeys = list(self.episodeIndex.keys())
+            randomKey = indexKeys[random.randint(0, len(indexKeys)-1)]
+            episodeList = self.episodeIndex[randomKey]
+            episode = episodeList[random.randint(0, len(episodeList)-1)]
             q.learn(discreter.getState(episode['observation']), episode['action'], discreter.getState(episode['newObservation']), episode['reward'], episode['done'])
 
 
