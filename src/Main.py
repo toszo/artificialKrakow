@@ -39,7 +39,7 @@ class MainClass:
         allSteps = []
         while True:
             observation = env.reset()
-            steps = self.runEpisode(env, observation, q, discreter)
+            steps = self.runEpisode(env, observation, q, discreter, iteration)
             allSteps.append(steps)
             self.logCounter(iteration,steps)
             self.learnFromPreviousExperience(q, discreter)
@@ -86,13 +86,16 @@ class MainClass:
         for episode in self.episodeData:
             self.updateEpisodeIndex(episode, discreter)
 
-    def runEpisode(self, env, observation, q, discreter):
+    def runEpisode(self, env, observation, q, discreter iterationCount):
         done = False
         steps = 0
         while not done:
             state = discreter.getState(observation)
             qValues = q.calculate(state)
-            action = self.chooseBestAction(qValues)
+            if (iterationCount < 100):
+                action = self.chooseRandomAction(qValues)
+            else:
+                action = self.chooseBestAction(qValues)
 
             newObservation, reward, done, info = env.step(action)
            
