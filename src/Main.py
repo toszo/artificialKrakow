@@ -38,7 +38,7 @@ class MainClass:
         allSteps = []
         while True:
             observation = env.reset()
-            steps = self.runEpisode(env, observation, q, discreter)
+            steps = self.runEpisode(env, observation, q, discreter, iteration)
             allSteps.append(steps)
             self.logCounter(iteration,steps)
             self.learnFromPreviousExperience(q, discreter)
@@ -83,13 +83,16 @@ class MainClass:
             with open(MainClass.fileName, 'rb') as input:
                 self.episodeData = pickle.load(input)
 
-    def runEpisode(self, env, observation, q, discreteConverter):
+    def runEpisode(self, env, observation, q, discreteConverter, iterationCount):
         done = False
         steps = 0
         while not done:
             state = discreteConverter.getState(observation)
             qValues = q.calculate(state)
-            action = self.chooseRandomAction(qValues)
+            if (iterationCount < 100):
+                action = self.chooseRandomAction(qValues)
+            else:
+                action = self.chooseBestAction(qValues)
 
             newObservation, reward, done, info = env.step(action)
            
