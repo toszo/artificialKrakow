@@ -1,25 +1,20 @@
-import random
 import os.path
 import pickle
+import random
+
 import gym
 
-from StateMapper import StateMapper
-from Q import Q
+from shared.StateMapper import StateMapper
+from shared.Q import Q
 
 
 class MainClass:
-    def __init__(self):        
+    def __init__(self):
         self.episodeData = []
         self.episodeIndex = dict()
 
     def chooseRandomAction(self, qValues):
-        randValue = random.random() * sum(qValues)
-        index = 0
-        for value in qValues:
-            if randValue <= value:
-                return index
-            randValue -= value
-            index += 1
+        return random.randint(0, len(qValues) - 1)
 
     def chooseBestAction(self, qValues):
         return qValues.index(max(qValues))
@@ -35,13 +30,13 @@ class MainClass:
             action = self.chooseRandomAction(qValues)
         return action
 
-    def execute(self):
-        env = gym.make('CartPole-v0')
+    def execute(self, environmentName):
+        env = gym.make(environmentName)
         q = Q.load(env)
-        discreter = StateMapper.load()
+        discreter = StateMapper.load(len(env.observation_space.high))
         print('discreter loaded')
         print('  high:'+str(discreter.high))
-        print('   low:'+str(discreter.low))  
+        print('   low:'+str(discreter.low))
         self.load(discreter)
         self.clearCouterLog()
 
@@ -59,19 +54,19 @@ class MainClass:
                 iteration = 0
                 q = Q(env)
                 q.save()
-                discreter.save()   
+                discreter.save()
                 print('new discretization.dat saved')
                 print('  high:'+str(discreter.high))
-                print('   low:'+str(discreter.low))      
-       
-            iteration += 1  
-            if iteration % 10 == 0:
-                q.save() 
-                self.save()      
-                print('iteration:'+str(iteration)+', steps(avg):'+str(float(sum(allSteps))/len(allSteps)))
-                allSteps = [] 
+                print('   low:'+str(discreter.low))
 
-    fileName = 'episodeData.dat'   
+            iteration += 1
+            if iteration % 10 == 0:
+                q.save()
+                self.save()
+                print('iteration:'+str(iteration)+', steps(avg):'+str(float(sum(allSteps))/len(allSteps)))
+                allSteps = []
+
+    fileName = 'episodeData.dat'
     counterFileName = 'counter.dat'
 
     def clearCouterLog(self):
@@ -106,9 +101,9 @@ class MainClass:
             action = self.chooseActionBasedOnIndex(qValues,state)
 
             newObservation, reward, done, info = env.step(action)
-           
+
             newState = discreter.getState(newObservation)
-            q.learn(state, action, newState, reward, done)           
+            q.learn(state, action, newState, reward, done)
             self.saveEpisode({'observation':observation, 'action':action, 'newObservation':newObservation, 'reward':reward, 'done':done}, discreter)
 
             observation = newObservation
@@ -133,10 +128,3 @@ class MainClass:
             episodeList = self.episodeIndex[randomKey]
             episode = episodeList[random.randint(0, len(episodeList)-1)]
             q.learn(discreter.getState(episode['observation']), episode['action'], discreter.getState(episode['newObservation']), episode['reward'], episode['done'])
-
-
-def main(args=None):
-    MainClass().execute()
-
-if __name__ == "__main__":
-    main()
