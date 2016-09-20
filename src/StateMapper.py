@@ -1,7 +1,7 @@
 import os.path
 import pickle
 
-class Discretization:
+class StateMapper:
     def __init__(self, high, low):
         self.high = high
         self.low = low
@@ -9,16 +9,16 @@ class Discretization:
 
     fileName = "discretization.dat"
     def save(self):
-        with open(Discretization.fileName, 'wb') as output:
+        with open(StateMapper.fileName, 'wb') as output:
             pickle.dump({'high':self.high,'low':self.low}, output, pickle.HIGHEST_PROTOCOL)
      
     @staticmethod
     def load():
-        if not os.path.isfile(Discretization.fileName):
+        if not os.path.isfile(StateMapper.fileName):
             raise Exception('discretization.dat not found')
-        with open(Discretization.fileName, 'rb') as input:
+        with open(StateMapper.fileName, 'rb') as input:
             config = pickle.load(input)
-            return Discretization(config['high'], config['low'])
+            return StateMapper(config['high'], config['low'])
 
     def getState(self, observation):
         result = [None] * len(self.high)

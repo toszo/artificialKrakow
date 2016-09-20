@@ -3,7 +3,7 @@ import os.path
 import pickle
 import gym
 
-from Discretization import Discretization
+from StateMapper import StateMapper
 from Q import Q
 
 
@@ -26,9 +26,10 @@ class MainClass:
 
     def chooseActionBasedOnIndex(self,qValues,state):
         indexValues = [len(value) for value in self.episodeIndex.values()]
-        avg = sum(indexValues)/len(indexValues)
-        
-        if (str(state) in self.episodeIndex.keys() and len(self.episodeIndex[str(state)]) > avg):
+
+        valuesCount = len(indexValues)
+
+        if (valuesCount != 0 and str(state) in self.episodeIndex.keys() and len(self.episodeIndex[str(state)]) > sum(indexValues)/valuesCount):
             action = self.chooseBestAction(qValues)
         else:
             action = self.chooseRandomAction(qValues)
@@ -37,7 +38,7 @@ class MainClass:
     def execute(self):
         env = gym.make('CartPole-v0')
         q = Q.load(env)
-        discreter = Discretization.load()
+        discreter = StateMapper.load()
         print('discreter loaded')
         print('  high:'+str(discreter.high))
         print('   low:'+str(discreter.low))  
