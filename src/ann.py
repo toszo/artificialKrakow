@@ -7,21 +7,45 @@
 from pybrain.tools.shortcuts import buildNetwork
 from pybrain.datasets import SupervisedDataSet
 from pybrain.supervised.trainers import BackpropTrainer
+import os.path
+import pickle
 
-net = buildNetwork(4, 10, 2)
-result = net.activate([1,3,2,0])
-print(result)
-ds = SupervisedDataSet(4, 2)
+class Ann:
 
-ds.addSample([1,3,2,0], [1,4])
-ds.addSample([1,3,2,0], [1,4])
+    InputSpaceSize = 4
+    OutputSpaceSize = 2
+    InternalSpaceSize = 6
+    def __init__(self):
+        self.episodeData = []
+        self.net = buildNetwork(InputSpaceSize, InternalSpaceSize, OutputSpaceSize)     
+        self.ds = SupervisedDataSet(InputSpaceSize, OutputSpaceSize)
+    
+    fileName = 'episodeData.dat'
 
-ds.addSample([1,3,2,1], [1,5])
+    def load(self):
+        if not os.path.isfile(Ann.fileName):
+            self.episodeData = []
+        else:
+            with open(Ann.fileName, 'rb') as input:
+                self.episodeData = pickle.load(input)
+    
+    def train(self):
+        trainer = BackpropTrainer(self.net, self.ds)
+        trainer.trainUntilConvergence()
 
+    def learn(self):
+        self.load()
 
+        for episode in self.episodeData:
+             observation = [episode['observation'][i] for i in range(InputSpaceSize))]
+             newObservation = [episode['newObservation'][i] for i in range(InputSpaceSize))]
+             q1 = self.net.activate(observation)
+             q2 = self.net.activate(newObservation)
+             
+       # self.train()
 
-trainer = BackpropTrainer(net, ds)
-trainer.trainUntilConvergence()
+def main(args=None):
+    Ann().learn()
 
-result = net.activate([1,3,2,0])
-print(result)
+if __name__ == "__main__":
+    main()
