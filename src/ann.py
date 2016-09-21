@@ -1,4 +1,4 @@
-# How to get this shit.
+# Neural Network
 # git clone git://github.com/pybrain/pybrain.git
 # sudo python3 setup.py install
 # sudo apt-get install python3-numpy python3-scipy
@@ -16,10 +16,10 @@ class Ann:
     def __init__(self, env, environmentName):
         
         self.episodeData = []
-    
+        self.env = env
         self.inputSpaceSize = env.observation_space.shape[0]
         self.outputSpaceSize = env.action_space.n
-        self.internalSpaceSize = 3
+        self.internalSpaceSize = 5
 
         self.net = buildNetwork(self.inputSpaceSize,self.internalSpaceSize, self.outputSpaceSize)     
         self.ds = SupervisedDataSet(self.inputSpaceSize, self.outputSpaceSize)
@@ -39,13 +39,29 @@ class Ann:
     def train(self):
         print("Network training - samples:"+str(len(self.ds)))
         trainer = BackpropTrainer(self.net, self.ds)
-        trainer.trainUntilConvergence(maxEpochs=500)
+
+        last = trainer.train()
+        for i in range(20):
+            cur = trainer.train()
+            if(i % 10 == 0):
+                print(cur, cur-last)
+            last = cur
+
+      #  trainer.trainUntilConvergence(maxEpochs=100)
         self.ds.clear()
 
+    def normalize(self,observation):
+        high = self.env.observation_space.high
+        low = self.env.observation_space.low
+        result = []
+        for i in range(len(high)):
+            norm = 1 #abs(high[i] - low[i])
+            result.append(observation[i]/norm)
+        return result
 
     def learn(self,episode):
-        observation = [episode['observation'][i] for i in range(self.inputSpaceSize)]
-        newObservation = [episode['newObservation'][i] for i in range(self.inputSpaceSize)]
+        observation = self.normalize(episode['observation'])  #[episode['observation'][i] for i in range(self.inputSpaceSize)]
+        newObservation = self.normalize(episode['newObservation']) #[episode['newObservation'][i] for i in range(self.inputSpaceSize)]
         reward = episode['reward']
         action = episode['action']
         q = self.calculate(observation)
@@ -61,7 +77,7 @@ class Ann:
     def calculate(self,observation):
         return list(self.net.activate(observation))
 
-    SampleSize = 2 # in percentege
+    SampleSize = 50 # in percentege
     def learnDefault(self):
         self.load()
 

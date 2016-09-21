@@ -6,7 +6,6 @@ import gym
 
 from ann import Ann
 
-
 class MainAnn:
     def __init__(self, environmentName):
         self.episodeData = []
@@ -29,13 +28,23 @@ class MainAnn:
 
     def execute(self):
         env = gym.make(self.environmentName)
+
+        net = self.loadQ()
         q = Ann(env, self.environmentName)
-        q.learnDefault()
+        if net == None:            
+            q.learnDefault()
+        else:
+            q.net = net
         self.clearCouterLog()
 
+        iter=0;
         while True:
             observation = env.reset()
-            self.runEpisode(env, observation, q)
+            steps = self.runEpisode(env, observation, q)
+            iter+=1
+            if(iter % 1000):
+                self.saveNetworkData(q)
+
             
     def counterFileName(self):
         return self.environmentName + '.counter.dat'
@@ -52,14 +61,29 @@ class MainAnn:
 
     def episodeDataFileName(self):
         return self.environmentName + '.episodeData.dat'
-        
+
+    def networkDataFileName(self):
+        return self.environmentName + '.network.dat'
+
+    def saveNetworkData(self,q):
+        with open(self.networkDataFileName(), 'wb') as output:
+            pickle.dump(q.net, output, pickle.HIGHEST_PROTOCOL)
+
+
     def saveEpisodeData(self):
         with open(self.episodeDataFileName(), 'wb') as output:
             pickle.dump(self.episodeData, output, pickle.HIGHEST_PROTOCOL)
 
+    def loadQ(self):
+        if not os.path.isfile(self.networkDataFileName()):
+           return None
+        else:
+            with open(self.networkDataFileName(), 'rb') as input:
+                return pickle.load(input)
           
     def runEpisode(self, env, observation, q):
         done = False
+        self.steps =0
         while not done:
             qValues = q.calculate(observation)
 
@@ -71,16 +95,15 @@ class MainAnn:
             
             q.learn(episode)
             
-
             observation = newObservation
-            #env.render()
+            env.render()
             self.steps += 1
             if self.steps % self.trainEverySteps == 0:
                 q.train()                
 
         self.logCounter(self.steps)
         print('Steps:'+str(self.steps))
-        self.steps =0
+        return self.steps
 
     def learnFromPreviousExperience(self, q):
         for _ in range(len(self.episodeIndex.keys()) * 10):
