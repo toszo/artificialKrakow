@@ -1,40 +1,50 @@
 import os.path
 import pickle
-
+import numpy
 
 class StateMapper:
-    def __init__(self, high, low, environmentName):
-        self.high = high
-        self.low = low
+    def __init__(self, environmentName):
+        self.high = []
+        self.low = []        
+        self.highFromData = []
+        self.lowFromData = []
         self.environmentName = environmentName
         self.ranges = 10
         self.extendRangePercent = 0.1
 
-    def fileName(self):
-        return self.environmentName + '.highs-lows.dat'
+    @staticmethod
+    def fileName(environmentName):
+        return environmentName + '.highs-lows.dat'
 
     def save(self):
-        with open(self.fileName(), 'wb') as output:
-            pickle.dump({'high': self.high, 'low': self.low}, output, pickle.HIGHEST_PROTOCOL)
-
-    def extendVector(self):
-        deltas = [h - l for h, l in zip(self.high, self.low)]
-        deltas = [d * self.extendRangePercent for d in deltas]
-        self.high = [h + d for h, d in zip(self.high, deltas)]
-        self.low = [l - d for l, d in zip(self.low, deltas)]
+        with open(StateMapper.fileName(self.environmentName), 'wb') as output:
+            pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
+        
+        dimensions = numpy.array([self.high, self.highFromData, self.low, self.lowFromData]).transpose()
+        print('New StateMapper configuration saved')
+        print('high (from data), low (from data)')
+        for dimension in dimensions:
+            print(str(dimension[0]) + ' (' + ('Y' if dimension[1] else 'N') + '), ' + str(dimension[2]) + ' (' + ('Y' if dimension[3] else 'N') + ')')
 
     @staticmethod
     def load(dimensions, environmentName):
-        stateMapper = StateMapper([], [], environmentName)
-        if not os.path.isfile(stateMapper.fileName()):
+        if not os.path.isfile(StateMapper.fileName(environmentName)):
+            stateMapper = StateMapper(environmentName)
             stateMapper.high = [0.0001] * dimensions
             stateMapper.low = [-0.0001] * dimensions
-            return stateMapper
-        with open(stateMapper.fileName(), 'rb') as input:
-            config = pickle.load(input)
-            stateMapper.high = config['high']
-            stateMapper.low = config['low']
-            return stateMapper
+            stateMapper.highFromData = [False] * dimensions
+            stateMapper.lowFromData = [False] * dimensions
+        else:
+            with open(StateMapper.fileName(environmentName), 'rb') as input:
+                stateMapper = pickle.load(input)
+
+        dimensions = numpy.array([stateMapper.high, stateMapper.highFromData, stateMapper.low, stateMapper.lowFromData]).transpose()
+        print('StateMapper configuration loaded')
+        print('high (from data), low (from data)')
+        for dimension in dimensions:
+            print(str(dimension[0]) + ' (' + ('Y' if dimension[1] else 'N') + '), ' + str(dimension[2]) + ' (' + ('Y' if dimension[3] else 'N') + ')')
+        
+        return stateMapper
 
     def getState(self, observation):
         result = [None] * len(self.high)
@@ -52,22 +62,36 @@ class StateMapper:
             result[i] = value
         return result
 
-    def update(self, observations):
-        dimensions = len(observations[0])
-        observationsPivot = []
-        for index in range(dimensions):
-            observationsPivot.append([observation[index] for observation in observations])
+    def observationsWithinLimits(self, observations):
+        observations_high = numpy.amax(observations, axis=0)
+        observations_low = numpy.amin(observations, axis=0)
 
-        high = []
-        low = []
-        for dimension in range(dimensions):
-            values = observationsPivot[dimension]
-            high.append(max(values))
-            low.append(min(values))
+        withinHighLimit = [oh <= h for h, oh in zip(self.high, observations_high)]
+        withinLowLimit  = [l <= ol for l, ol in zip(self.low, observations_low)]
 
-        newHigh = [max(highs) for highs in list(zip(high, self.high))]
-        newLow = [min(lows) for lows in list(zip(low, self.low))]
-        changed = not (str(newHigh) == str(self.high) and str(newLow) == str(self.low))
-        self.high = newHigh
-        self.low = newLow
-        return changed
+        return all(withinHighLimit) and all(withinLowLimit)
+
+    def updateLimits(self, observations):
+        observations_high = numpy.amax(observations, axis=0)
+        observations_low = numpy.amin(observations, axis=0)
+
+        for index in range(len(self.high)):
+            extendHigh = False
+            if not self.highFromData[index] or self.high[index] < observations_high[index]:
+                self.high[index] = observations_high[index]
+                self.highFromData[index] = True
+                extendHigh = True
+            extendLow = False
+            if not self.lowFromData[index] or observations_low[index] < self.low[index]:
+                self.low[index] = observations_low[index]
+                self.lowFromData[index] = True
+                extendLow = True
+
+            high = self.high[index] 
+            low = self.low[index]
+            delta = (1 + self.extendRangePercent)*(high - low)
+            if extendHigh:
+                self.high[index] = low + delta
+            if extendLow:
+                self.low[index] = high - delta
+

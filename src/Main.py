@@ -15,6 +15,7 @@ class MainClass:
         self.environmentName = environmentName
         self.steps = 0
         self.saveEverySteps = 1000
+        self.endingLength = 10
 
     def chooseRandomAction(self, qValues):
         return random.randint(0, len(qValues) - 1)
@@ -37,27 +38,22 @@ class MainClass:
         env = gym.make(self.environmentName)
         q = Q.load(env, self.environmentName)
         discreter = StateMapper.load(len(env.observation_space.high), self.environmentName)
-        print('StateMapper configuration loaded')
-        print('  high:'+str(discreter.high))
-        print('   low:'+str(discreter.low))
         self.loadEpisodeData(discreter)
         self.clearCouterLog()
 
         while True:
-            observation = env.reset()
-            self.runEpisode(env, observation, q, discreter)
-            self.learnFromPreviousExperience(q, discreter)
             allHistoricObservations = [episode['observation'] for episode in self.episodeData]
-            changed = discreter.update(allHistoricObservations)
-            if changed:
+            withinLimits = discreter.observationsWithinLimits(allHistoricObservations)
+            if not withinLimits:
                 iteration = 0
                 q = Q(env, self.environmentName)
                 q.save()
-                discreter.extendVector()
+                discreter.updateLimits(allHistoricObservations)
                 discreter.save()
-                print('New StateMapper configuration saved')
-                print('  high:'+str(discreter.high))
-                print('   low:'+str(discreter.low))
+
+            self.runEpisode(env, q, discreter)
+            self.learnFromPreviousExperience(q, discreter)
+            
 
     def counterFileName(self):
         return self.environmentName + '.counter.dat'
@@ -85,11 +81,12 @@ class MainClass:
         else:
             with open(self.episodeDataFileName(), 'rb') as input:
                 self.episodeData = pickle.load(input)
-        for episode in self.episodeData:
+        for episode in self.episodeData: 
             self.updateEpisodeIndex(episode, discreter)
 
 
-    def runEpisode(self, env, observation, q, discreter):
+    def runEpisode(self, env, q, discreter):
+        observation = env.reset()
         done = False
         while not done:
             state = discreter.getState(observation)
@@ -101,7 +98,7 @@ class MainClass:
 
             newState = discreter.getState(newObservation)
             q.learn(state, action, newState, reward, done)
-            self.saveEpisode({'observation':observation, 'action':action, 'newObservation':newObservation, 'reward':reward, 'done':done}, discreter)
+            self.addEpisode({'observation':observation, 'action':action, 'newObservation':newObservation, 'reward':reward, 'done':done}, discreter)
 
             observation = newObservation
             env.render()
@@ -109,11 +106,13 @@ class MainClass:
             if self.steps % self.saveEverySteps == 0:
                 self.saveEpisodeData()
                 print('Steps:'+str(self.steps)+'. Episode data saved.')
-
+        
+        self.saveEpisodeData()
+        print('Steps:'+str(self.steps)+'(end of episode). Episode data saved.')
         self.logCounter(self.steps)
         
 
-    def saveEpisode(self, episode, discreter):
+    def addEpisode(self, episode, discreter):
         self.episodeData.append(episode)
         self.updateEpisodeIndex(episode, discreter)
     def updateEpisodeIndex(self, episode, discreter):
@@ -124,9 +123,41 @@ class MainClass:
 
 
     def learnFromPreviousExperience(self, q, discreter):
-        for _ in range(len(self.episodeIndex.keys()) * 10):
+        self.learnFromEndings(q, discreter)
+        for _ in range(len(self.episodeIndex.keys()) * 1):
             indexKeys = list(self.episodeIndex.keys())
             randomKey = indexKeys[random.randint(0, len(indexKeys)-1)]
             episodeList = self.episodeIndex[randomKey]
             episode = episodeList[random.randint(0, len(episodeList)-1)]
-            q.learn(discreter.getState(episode['observation']), episode['action'], discreter.getState(episode['newObservation']), episode['reward'], episode['done'])
+            self.learnEpisode(episode, q, discreter)
+
+    def learnEpisode(self, episode, q, discreter):
+        q.learn(discreter.getState(episode['observation']), episode['action'], discreter.getState(episode['newObservation']), episode['reward'], episode['done'])
+
+    def findEndings(self):
+        endings = [{'end':e, 'index':i, 'prev':[]} for i, e in enumerate(self.episodeData) if e['done']]
+        for index, ending in enumerate(endings):
+            prev = ending['end']
+            prev_index = ending['index']
+            for _ in range(self.endingLength):
+                if prev_index > 0 and (self.episodeData[prev_index-1]['newObservation'] == prev['observation']).all():
+                    prev = self.episodeData[prev_index-1]
+                    prev_index = prev_index - 1
+                else:   
+                    pre_prevs = [e for e in self.episodeData if (e['newObservation'] == prev['observation']).all()]
+                    if len(pre_prevs) != 1:
+                        break
+                    prev = pre_prevs[0]
+                ending['prev'].append(prev)
+        return [[ending['end']] + ending['prev'] for ending in endings]        
+
+    def learnFromEndings(self, q, discreter):
+        endings = self.findEndings()
+        print('Endings:', len(endings))
+        episodes = [episode for ending in endings for episode in ending]
+        for _ in range(10):
+            for episode in episodes:
+                self.learnEpisode(episode, q, discreter)
+            
+            
+        
