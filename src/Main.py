@@ -10,11 +10,11 @@ from Q import Q
 
 class MainClass:
     def __init__(self, environmentName):
-        self.episodeData = []
-        self.episodeIndex = dict()
+        self.stepsData = []
+        self.stepsIndex = dict()
         self.environmentName = environmentName
-        self.steps = 0
-        self.saveEverySteps = 1000
+        self.stepCount = 0
+        self.saveStepsAfter = 1000
         self.endingLength = 10
 
     def chooseRandomAction(self, qValues):
@@ -24,11 +24,11 @@ class MainClass:
         return qValues.index(max(qValues))
 
     def chooseActionBasedOnIndex(self,qValues,state):
-        indexValues = [len(value) for value in self.episodeIndex.values()]
+        indexValues = [len(value) for value in self.stepsIndex.values()]
 
         valuesCount = len(indexValues)
 
-        if (valuesCount != 0 and str(state) in self.episodeIndex.keys() and len(self.episodeIndex[str(state)]) > sum(indexValues)/valuesCount):
+        if (valuesCount != 0 and str(state) in self.stepsIndex.keys() and len(self.stepsIndex[str(state)]) > sum(indexValues)/valuesCount):
             action = self.chooseBestAction(qValues)
         else:
             action = self.chooseRandomAction(qValues)
@@ -38,11 +38,11 @@ class MainClass:
         env = gym.make(self.environmentName)
         q = Q.load(env, self.environmentName)
         discreter = StateMapper.load(len(env.observation_space.high), self.environmentName)
-        self.loadEpisodeData(discreter)
+        self.loadStepsData(discreter)
         self.clearCouterLog()
 
         while True:
-            allHistoricObservations = [episode['observation'] for episode in self.episodeData]
+            allHistoricObservations = [step['observation'] for step in self.stepsData]
             withinLimits = discreter.observationsWithinLimits(allHistoricObservations)
             if not withinLimits:
                 iteration = 0
@@ -68,21 +68,21 @@ class MainClass:
         file.write(str(steps)+"\n")
 
 
-    def episodeDataFileName(self):
-        return self.environmentName + '.episodeData.dat'
+    def stepsDataFileName(self):
+        return self.environmentName + '.stepsData.dat'
         
-    def saveEpisodeData(self):
-        with open(self.episodeDataFileName(), 'wb') as output:
-            pickle.dump(self.episodeData, output, pickle.HIGHEST_PROTOCOL)
+    def saveStepsData(self):
+        with open(self.stepsDataFileName(), 'wb') as output:
+            pickle.dump(self.stepsData, output, pickle.HIGHEST_PROTOCOL)
 
-    def loadEpisodeData(self, discreter):
-        if not os.path.isfile(self.episodeDataFileName()):
-            self.episodeData = []
+    def loadStepsData(self, discreter):
+        if not os.path.isfile(self.stepsDataFileName()):
+            self.stepsData = []
         else:
-            with open(self.episodeDataFileName(), 'rb') as input:
-                self.episodeData = pickle.load(input)
-        for episode in self.episodeData: 
-            self.updateEpisodeIndex(episode, discreter)
+            with open(self.stepsDataFileName(), 'rb') as input:
+                self.stepsData = pickle.load(input)
+        for step in self.stepsData: 
+            self.updateStepsIndex(step, discreter)
 
 
     def runEpisode(self, env, q, discreter):
@@ -98,53 +98,53 @@ class MainClass:
 
             newState = discreter.getState(newObservation)
             q.learn(state, action, newState, reward, done)
-            self.addEpisode({'observation':observation, 'action':action, 'newObservation':newObservation, 'reward':reward, 'done':done}, discreter)
+            self.addStep({'observation':observation, 'action':action, 'newObservation':newObservation, 'reward':reward, 'done':done}, discreter)
 
             observation = newObservation
             env.render()
-            self.steps += 1
-            if self.steps % self.saveEverySteps == 0:
-                self.saveEpisodeData()
-                print('Steps:'+str(self.steps)+'. Episode data saved.')
+            self.stepCount += 1
+            if self.stepCount % self.saveStepsAfter == 0:
+                self.saveStepsData()
+                print('Steps performed:'+str(self.stepCount)+'. Steps data saved.')
         
-        self.saveEpisodeData()
-        print('Steps:'+str(self.steps)+'(end of episode). Episode data saved.')
-        self.logCounter(self.steps)
+        self.saveStepsData()
+        print('Steps performed:'+str(self.stepCount)+'(end of episode). Steps data saved.')
+        self.logCounter(self.stepCount)
         
 
-    def addEpisode(self, episode, discreter):
-        self.episodeData.append(episode)
-        self.updateEpisodeIndex(episode, discreter)
-    def updateEpisodeIndex(self, episode, discreter):
-        stateKey = str(discreter.getState(episode['observation']))
-        if not stateKey in self.episodeIndex.keys():
-            self.episodeIndex[stateKey] = []
-        self.episodeIndex[stateKey].append(episode)
+    def addStep(self, step, discreter):
+        self.stepsData.append(step)
+        self.updateStepsIndex(step, discreter)
+    def updateStepsIndex(self, step, discreter):
+        stateKey = str(discreter.getState(step['observation']))
+        if not stateKey in self.stepsIndex.keys():
+            self.stepsIndex[stateKey] = []
+        self.stepsIndex[stateKey].append(step)
 
 
     def learnFromPreviousExperience(self, q, discreter):
         self.learnFromEndings(q, discreter)
-        for _ in range(len(self.episodeIndex.keys()) * 1):
-            indexKeys = list(self.episodeIndex.keys())
+        for _ in range(len(self.stepsIndex.keys()) * 1):
+            indexKeys = list(self.stepsIndex.keys())
             randomKey = indexKeys[random.randint(0, len(indexKeys)-1)]
-            episodeList = self.episodeIndex[randomKey]
-            episode = episodeList[random.randint(0, len(episodeList)-1)]
-            self.learnEpisode(episode, q, discreter)
+            stepsList = self.stepsIndex[randomKey]
+            step = stepsList[random.randint(0, len(stepsList)-1)]
+            self.learnStep(step, q, discreter)
 
-    def learnEpisode(self, episode, q, discreter):
-        q.learn(discreter.getState(episode['observation']), episode['action'], discreter.getState(episode['newObservation']), episode['reward'], episode['done'])
+    def learnStep(self, step, q, discreter):
+        q.learn(discreter.getState(step['observation']), step['action'], discreter.getState(step['newObservation']), step['reward'], step['done'])
 
     def findEndings(self):
-        endings = [{'end':e, 'index':i, 'prev':[]} for i, e in enumerate(self.episodeData) if e['done']]
+        endings = [{'end':e, 'index':i, 'prev':[]} for i, e in enumerate(self.stepsData) if e['done']]
         for index, ending in enumerate(endings):
             prev = ending['end']
             prev_index = ending['index']
             for _ in range(self.endingLength):
-                if prev_index > 0 and (self.episodeData[prev_index-1]['newObservation'] == prev['observation']).all():
-                    prev = self.episodeData[prev_index-1]
+                if prev_index > 0 and (self.stepsData[prev_index-1]['newObservation'] == prev['observation']).all():
+                    prev = self.stepsData[prev_index-1]
                     prev_index = prev_index - 1
                 else:   
-                    pre_prevs = [e for e in self.episodeData if (e['newObservation'] == prev['observation']).all()]
+                    pre_prevs = [e for e in self.stepsData if (e['newObservation'] == prev['observation']).all()]
                     if len(pre_prevs) != 1:
                         break
                     prev = pre_prevs[0]
@@ -154,10 +154,9 @@ class MainClass:
     def learnFromEndings(self, q, discreter):
         endings = self.findEndings()
         print('Endings:', len(endings))
-        episodes = [episode for ending in endings for episode in ending]
+        steps = [step for ending in endings for step in ending]
         for _ in range(10):
-            for episode in episodes:
-                self.learnEpisode(episode, q, discreter)
-            
+            for step in steps:
+                self.learnStep(step, q, discreter)
             
         
