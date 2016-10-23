@@ -1,114 +1,67 @@
 import os.path
 import pickle
 import random
-
 import gym
-
-from ann import Ann
+import numpy
+from TensorFlowAnn import TensorFlowAnn
 
 class MainAnn:
     def __init__(self, environmentName):
-        self.episodeData = []
-        self.episodeIndex = dict()
         self.environmentName = environmentName
-        self.steps = 0
-        self.trainEverySteps = 10
        
-    def chooseRandomAction(self, qValues):
-        return random.randint(0, len(qValues) - 1)
+    def chooseRandomAction(self, Qs):
+        return random.randint(0, len(Qs) - 1)
 
-    def chooseBestAction(self, qValues):
-        return qValues.index(max(qValues))
+    def chooseBestAction(self, Qs):
+        qs = list(numpy.copy(Qs).flatten())
+        return qs.index(max(qs))
 
-    def chooseRandomOrBest(self,qvalues):
-        if(random.randint(0,100) > 90):
-            return self.chooseRandomAction(qvalues)
+    def chooseAction(self,Qs):
+        if random.randint(0,100) > 90:
+            return self.chooseRandomAction(Qs)
         else:
-            return self.chooseBestAction(qvalues)
+            return self.chooseBestAction(Qs)
 
     def execute(self):
         env = gym.make(self.environmentName)
-
-        net = self.loadQ()
-        q = Ann(env, self.environmentName)
-        if net == None:            
-            q.learnDefault()
-        else:
-            q.net = net
-        self.clearCouterLog()
-
-        iter=0;
+        ann = TensorFlowAnn(self.environmentName, [len(env.observation_space.high), 20, env.action_space.n])
         while True:
-            observation = env.reset()
-            steps = self.runEpisode(env, observation, q)
-            iter+=1
-            if(iter % 1000):
-                self.saveNetworkData(q)
+            stepsData = []
+            for _ in range(0, 1):
+                newSteps = self.runEpisode(env, ann)
+                stepsData += newSteps
+            self.trainAnn(ann, stepsData)
 
-            
-    def counterFileName(self):
-        return self.environmentName + '.counter.dat'
+    def trainAnn(self, ann, stepsData):
+        print('training ANN')
+        for _ in range(0, 10):
+            print('calculate train samples')
+            (observations, Qs) = self.prepareTrainSamples(ann, stepsData)
+            ann.train(observations, Qs)
+        print('training completed')
 
-    def clearCouterLog(self):
-        file = open(self.counterFileName(),"w")
-        file.seek(0)
-        file.truncate()
+    def prepareTrainSamples(self, ann, stepsData):
+        learningRate = 0.1
+        discountFactor = 0.9
+        observations = [step['observation'] for step in stepsData]
+        Qs = [ann.calculate(observation) for observation in observations]
+        for Q, step in zip(Qs, stepsData):
+            newValue = discountFactor * max(ann.calculate(step['newObservation'])) + step['reward']
+            oldValue = Q[step['action']] 
+            Q[step['action']] = oldValue + learningRate * (newValue - oldValue)
+        return (observations, Qs)
 
-    def logCounter(self,steps):
-        file = open(self.counterFileName(),"a")
-        file.write(str(steps)+"\n")
-
-
-    def episodeDataFileName(self):
-        return self.environmentName + '.episodeData.dat'
-
-    def networkDataFileName(self):
-        return self.environmentName + '.network.dat'
-
-    def saveNetworkData(self,q):
-        with open(self.networkDataFileName(), 'wb') as output:
-            pickle.dump(q.net, output, pickle.HIGHEST_PROTOCOL)
-
-
-    def saveEpisodeData(self):
-        with open(self.episodeDataFileName(), 'wb') as output:
-            pickle.dump(self.episodeData, output, pickle.HIGHEST_PROTOCOL)
-
-    def loadQ(self):
-        if not os.path.isfile(self.networkDataFileName()):
-           return None
-        else:
-            with open(self.networkDataFileName(), 'rb') as input:
-                return pickle.load(input)
-          
-    def runEpisode(self, env, observation, q):
+    def runEpisode(self, env, ann):
+        print('starting episode')
         done = False
-        self.steps =0
+        stepsData = []
+        observation = env.reset()
         while not done:
-            qValues = q.calculate(observation)
-
-            action = self.chooseRandomOrBest(qValues)
-
+            Qs = ann.calculate(observation)
+            action = self.chooseAction(Qs)
             newObservation, reward, done, info = env.step(action)
-
-            episode = {'observation':observation, 'action':action, 'newObservation':newObservation, 'reward':reward, 'done':done}
-            
-            q.learn(episode)
-            
-            observation = newObservation
+            stepsData.append({'observation':observation, 'action':action, 'newObservation':newObservation, 'reward':reward, 'done':done})
             env.render()
-            self.steps += 1
-            if self.steps % self.trainEverySteps == 0:
-                q.train()                
-
-        self.logCounter(self.steps)
-        print('Steps:'+str(self.steps))
-        return self.steps
-
-    def learnFromPreviousExperience(self, q):
-        for _ in range(len(self.episodeIndex.keys()) * 10):
-            indexKeys = list(self.episodeIndex.keys())
-            randomKey = indexKeys[random.randint(0, len(indexKeys)-1)]
-            episodeList = self.episodeIndex[randomKey]
-            episode = episodeList[random.randint(0, len(episodeList)-1)]
-            q.learn(episode)
+            observation = newObservation
+        print('episode completed')
+        return stepsData
