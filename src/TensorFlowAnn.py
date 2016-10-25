@@ -50,17 +50,11 @@ class TensorFlowAnn:
             self.session.run(self.train_step, feed_dict={self.x: trX, self.y: trY})
             cost = self.session.run(self.cost, feed_dict={self.x: trX, self.y: trY})
             print(i, 'cost', cost)
-            #print('trY', trY[-1])
-            #print('a_L', self.session.run(self.a_L, feed_dict={self.x: [trX[-1]]})[0])
             costs.append(math.log10(cost))
 
         saver = tf.train.Saver()
         saver.save(self.session, self.fileName)
         print('saved ann')
-
-        # with plt.style.context('fivethirtyeight'):
-        #     plt.plot(range(0, len(costs)), costs)
-        # plt.show()   
 
     def calculate(self, inX):
         outY = self.calculateBatch([inX])
