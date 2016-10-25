@@ -22,10 +22,6 @@ class TensorFlowAnn:
             b = self.initWeights([sizeout])
             a = tf.nn.relu(tf.matmul(a, W) + b)
         
-        # W_1 = self.initWeights([xSize, hSize])
-        # b_1 = self.initWeights([hSize])
-        # a_1 = tf.nn.relu(tf.matmul(x, W_1) + b_1)
-
         sizein = sizes[-2]
         sizeout = sizes[-1]
         W = self.initWeights([sizein, sizeout])
