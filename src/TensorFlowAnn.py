@@ -4,75 +4,99 @@ from matplotlib import pyplot as plt
 import math
 import os.path
 
-class TensorFlowAnn:
-    def __init__(self, environmentName, sizes):
-        self.fileName = environmentName + '.network.dat'
-        (self.x, self.y, self.a_L, self.cost, self.train_step, self.session) = self.createAnn(sizes)
-        
-    def initWeights(self, shape):
-        return tf.Variable(tf.random_normal(shape, stddev=1/np.sqrt(shape[0])))
+class Network:
+    pass
 
-    def createAnn(self, sizes):
-        x = tf.placeholder(tf.float32, [None, sizes[0]])
-        y = tf.placeholder(tf.float32, [None, sizes[-1]])
+class TensorFlowAnn:
+    def __init__(self, environmentName, actions, hiddenLayerSizes):
+        self.fileName = environmentName + '.network.dat'
+        self.createNetworks(hiddenLayerSizes, actions)
+        
+    def initWeights(self, shape, name):
+        return tf.Variable(tf.random_normal(shape, stddev=1/np.sqrt(shape[0])), name=name)
+
+    def createNetwork(self, sizes, variablePrefix):
+        x = tf.placeholder(tf.float32, [None, sizes[0]], name='{0}_x'.format(variablePrefix))
+        y = tf.placeholder(tf.float32, [None, sizes[-1]], name='{0}_y'.format(variablePrefix))
 
         a = x
+        layer = 1
         for sizein, sizeout in zip(sizes[:-2], sizes[1:-1]):
-            W = self.initWeights([sizein, sizeout])
-            b = self.initWeights([sizeout])
+            W = self.initWeights([sizein, sizeout], name='{0}_W{1}'.format(variablePrefix, layer))
+            b = self.initWeights([sizeout], name='{0}_b{1}'.format(variablePrefix, layer))
             a = tf.nn.relu(tf.matmul(a, W) + b)
+            layer += 1
         
         sizein = sizes[-2]
         sizeout = sizes[-1]
-        W = self.initWeights([sizein, sizeout])
-        b = self.initWeights([sizeout])
-        a_L = tf.matmul(a, W) + b
+        W = self.initWeights([sizein, sizeout], name='{0}_W{1}'.format(variablePrefix, layer))
+        b = self.initWeights([sizeout], name='{0}_b{1}'.format(variablePrefix, layer))
+        a = tf.matmul(a, W) + b
 
-        cost = tf.reduce_mean(tf.pow(tf.sub(a_L, y), 2))
+        cost = tf.reduce_mean(tf.pow(tf.sub(a, y), 2))
         
-        train_step = tf.train.GradientDescentOptimizer(0.001).minimize(cost)
+        train_step = tf.train.GradientDescentOptimizer(0.01).minimize(cost)
+        
+        network = Network()
+        network.x = x
+        network.y = y
+        network.a = a
+        network.cost = cost
+        network.train_step = train_step
+        return network
 
-        session = tf.Session()
+    def createNetworks(self, sizes, actions):
+        self.Qs = []
+        self.Ss = []
+        self.Rs = []
+        for action in range(0, actions):
+            self.Qs.append(self.createNetwork(sizes+[1], 'Q'+str(action)))
+            self.Ss.append(self.createNetwork(sizes+[sizes[0]], 'S'+str(action)))
+            self.Rs.append(self.createNetwork(sizes+[1], 'R'+str(action)))
+
+        self.session = tf.Session()
 
         if os.path.isfile(self.fileName):
             saver = tf.train.Saver()
-            saver.restore(session, self.fileName)
-            print('loaded ann')
+            saver.restore(self.session, self.fileName)
+            print('loaded networks')
         else:
-            session.run(tf.initialize_all_variables())
-            print('created new ann')
+            self.session.run(tf.initialize_all_variables())
+            print('created new networks')
 
-        return (x, y, a_L, cost, train_step, session)
+    def trainQs(self, action, trX, trY):
+        network = self.Qs[action]
+        self.session.run(network.train_step, feed_dict={network.x: trX, network.y: trY})
 
-    def train(self, trX, trY):
-        costs = []
-        for i in range(20):
-            self.session.run(self.train_step, feed_dict={self.x: trX, self.y: trY})
-            cost = self.session.run(self.cost, feed_dict={self.x: trX, self.y: trY})
-            print(i, 'cost', cost)
-            costs.append(math.log10(cost))
+    def trainSs(self, action, trX, trY):
+        network = self.Ss[action]
+        self.session.run(network.train_step, feed_dict={network.x: trX, network.y: trY})
 
+    def trainRs(self, action, trX, trY):
+        network = self.Rs[action]
+        self.session.run(network.train_step, feed_dict={network.x: trX, network.y: trY})
+
+    def saveNetworks(self):
         saver = tf.train.Saver()
         saver.save(self.session, self.fileName)
-        print('saved ann')
+        print('saved networks')
 
-    def calculate(self, inX):
-        outY = self.calculateBatch([inX])
+    def calculateQ(self, action, inX):
+        return self.calculate(self.Qs, action, inX)
+    def calculateBatchQ(self, action, inX):
+        return self.calculateBatch(self.Qs, action, inX)
+    def calculateS(self, action, inX):
+        return self.calculate(self.Ss, action, inX)
+    def calculateBatchS(self, action, inX):
+        return self.calculateBatch(self.Ss, action, inX)
+    def calculateR(self, action, inX):
+        return self.calculate(self.Rs, action, inX)
+    def calculateBatchR(self, action, inX):
+        return self.calculateBatch(self.Rs, action, inX)
+
+    def calculate(self, ann, action, inX):
+        outY = self.calculateBatch(ann, action, [inX])
         return outY[0]
-
-    def calculateBatch(self, inX):
-        return self.session.run(self.a_L, feed_dict={self.x: inX})
-
-
-
-def main(args=None):
-    trX = np.array([[2,1], [4,2], [1,2], [2,4]])
-    trY = np.array([[0.5], [0.5], [-0.5], [-0.5]])
-    ann = TensorFlowAnn('TensorFlowAnn', [2, 10, 1])
-    ann.train(trX, trY)
-    print([ann.calculate(x) for x in trX])
- 
-
-
-if __name__ == "__main__":
-    main()
+    def calculateBatch(self, ann, action, inX):
+        network = ann[action]
+        return self.session.run(network.a, feed_dict={network.x: inX})
