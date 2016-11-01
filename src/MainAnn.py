@@ -2,7 +2,7 @@ import os.path
 import pickle
 import random
 import gym
-import numpy
+import numpy as np
 import time
 import math
 from TensorFlowAnn import TensorFlowAnn
@@ -56,28 +56,37 @@ class MainAnn:
         self.discountFactor = 0.99
         observations = [step['observation'] for step in stepsForAction]
         newObservations = [step['newObservation'] for step in stepsForAction]
-        Qs = ann.calculateBatchQ(action, observations)
-        nextQs = numpy.transpose(numpy.array([[q[0] for q in ann.calculateBatchQ(action_, newObservations)] for action_ in self.actions]))
-        for Q, nextQ, step in zip(Qs, nextQs, stepsForAction):
+        Qs = ann.calculateBatch(ann.Qs, observations)
+        Rs = ann.calculateBatch(ann.Rs, observations)
+        Ss = ann.calculateBatch(ann.Ss, observations)
+        QsFromSs = self.QsFromSs(ann, Ss)     
+        nextQs = ann.calculateBatch(ann.Qs, newObservations)
+        nextRs = ann.calculateBatch(ann.Rs, newObservations)
+        nextSs = ann.calculateBatch(ann.Ss, newObservations)
+        nextQsFromSs = self.QsFromSs(ann, nextSs)
+        outQs = []
+        for Q, R, S, QFromS, nextQ, nextR, nextS, nextQFromS, step in zip(Qs, Rs, Ss, QsFromSs, nextQs, nextRs, nextSs, nextQsFromSs, stepsForAction):
             if step['done']:
                 newValue = step['reward']
             else:
-                F = self.discountFactor * self.Phi(step['newObservation']) - self.Phi(step['observation'])
-                newValue = self.discountFactor * max(nextQ) + step['reward'] + F
-            oldValue = Q[0]
-            Q[0] = oldValue + learningRate * (newValue - oldValue)
-        return (observations, Qs)
+                F = self.discountFactor * self.Phi(nextQ, nextR, nextS, nextQFromS) - self.Phi(Q, R, S, QFromS)
+                newValue = self.discountFactor * max(nextQ)[0] + step['reward'] + F
+            oldValue = Q[action][0]
+            outQs.append([oldValue + learningRate * (newValue - oldValue)])
+        return (observations, outQs)
 
-    def Phi(self, observation):
+    def Phi(self, Q, R, S, QFromS):
         sum = 0
-        
         for action in self.actions:
-            Q = self.ann.calculateQ(action, observation)
-            R = self.ann.calculateR(action, observation)
-            S = self.ann.calculateS(action, observation)
-            aQ = R + self.discountFactor * max([self.ann.calculateQ(action_, S) for action_ in self.actions]) 
-            sum += (Q - aQ)**2
+            aQ = R[action][0] + self.discountFactor * max(QFromS[action])[0]
+            sum += (Q[action][0] - aQ)**2
         return sum / len(self.actions)
+
+    def QsFromSs(self, ann, Ss):
+        reshapedSs = np.copy(Ss).reshape([Ss.shape[0]*Ss.shape[1], Ss.shape[2]])
+        Qs = ann.calculateBatch(ann.Qs, reshapedSs)
+        return Qs.reshape([Ss.shape[0], Ss.shape[1], Ss.shape[1], 1])
+
 
     def trainSs(self, ann, stepsData):
         for action in self.actions:       
@@ -92,6 +101,7 @@ class MainAnn:
         observations = [step['observation'] for step in stepsForAction]
         Ss = [step['newObservation'] for step in stepsForAction]
         return (observations, Ss)
+
 
     def trainRs(self, ann, stepsData):
         for action in self.actions:       
@@ -117,7 +127,7 @@ class MainAnn:
             rewardSum = 0
             newSteps = []
             while not done:
-                Qs = [ann.calculateQ(action, observation)[0] for action in self.actions]
+                Qs = ann.calculateBatch(ann.Qs, [observation]).reshape([len(self.actions)])
                 action = self.chooseAction(Qs)
                 newObservation, reward, done, info = env.step(action)
                 newSteps.append({'observation':observation, 'action':action, 'newObservation':newObservation, 'reward':reward, 'done':done})

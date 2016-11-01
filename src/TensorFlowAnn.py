@@ -81,22 +81,10 @@ class TensorFlowAnn:
         saver.save(self.session, self.fileName)
         print('saved networks')
 
-    def calculateQ(self, action, inX):
-        return self.calculate(self.Qs, action, inX)
-    def calculateBatchQ(self, action, inX):
-        return self.calculateBatch(self.Qs, action, inX)
-    def calculateS(self, action, inX):
-        return self.calculate(self.Ss, action, inX)
-    def calculateBatchS(self, action, inX):
-        return self.calculateBatch(self.Ss, action, inX)
-    def calculateR(self, action, inX):
-        return self.calculate(self.Rs, action, inX)
-    def calculateBatchR(self, action, inX):
-        return self.calculateBatch(self.Rs, action, inX)
-
-    def calculate(self, ann, action, inX):
-        outY = self.calculateBatch(ann, action, [inX])
-        return outY[0]
-    def calculateBatch(self, ann, action, inX):
-        network = ann[action]
-        return self.session.run(network.a, feed_dict={network.x: inX})
+    def calculateBatch(self, ann, inX):
+        out = np.array([self.session.run(network.a, feed_dict={network.x: inX}) for network in ann])
+        out = np.transpose(out, axes=[1,0,2])
+        return out
+            
+            
+        
