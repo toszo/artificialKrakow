@@ -1,7 +1,7 @@
-from Main import MainClass
+from Main import Main
 
 def main(args=None):
-    MainClass('MountainCar-v0').execute()
+    Main('MountainCar-v0').execute()
 
 if __name__ == "__main__":
     main()

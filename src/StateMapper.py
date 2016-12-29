@@ -9,7 +9,7 @@ class StateMapper:
         self.highFromData = []
         self.lowFromData = []
         self.environmentName = environmentName
-        self.ranges = 10
+        self.ranges = 20
         self.extendRangePercent = 0.1
 
     @staticmethod
@@ -89,9 +89,10 @@ class StateMapper:
 
             high = self.high[index] 
             low = self.low[index]
-            delta = (1 + self.extendRangePercent)*(high - low)
+            delta = self.extendRangePercent*(high - low)
+            delta = delta if delta > 0 else 0.0001
             if extendHigh:
-                self.high[index] = low + delta
+                self.high[index] = high + delta
             if extendLow:
-                self.low[index] = high - delta
+                self.low[index] = low - delta
 
