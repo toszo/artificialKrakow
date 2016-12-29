@@ -35,7 +35,7 @@ class TensorFlowAnn:
 
         cost = tf.reduce_mean(tf.pow(tf.sub(a, y), 2))
         
-        train_step = tf.train.GradientDescentOptimizer(0.01).minimize(cost)
+        train_step = tf.train.GradientDescentOptimizer(0.1).minimize(cost)
         
         network = Network()
         network.x = x

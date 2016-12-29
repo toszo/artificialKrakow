@@ -44,15 +44,13 @@ class MainAnn:
     def trainQs(self, ann, stepsData):
         for i in range(0, 10):
             for action in self.actions:       
-                print(i, 'training Qs, action', action)
                 stepsForAction = [step for step in stepsData if step['action'] == action]
-                print('  preparing Qs train samples', len(stepsForAction))
+                print(i, 'training Qs, action', action, 'samples', len(stepsForAction))
                 (observations, Qs) = self.prepareQsTrainSamples(ann, action, stepsForAction)
-                print('  training Qs')
                 ann.trainQs(action, observations, Qs)
 
     def prepareQsTrainSamples(self, ann, action, stepsForAction):
-        learningRate = 0.5
+        learningRate = 1
         self.discountFactor = 0.99
         observations = [step['observation'] for step in stepsForAction]
         newObservations = [step['newObservation'] for step in stepsForAction]
@@ -65,14 +63,19 @@ class MainAnn:
         nextSs = ann.calculateBatch(ann.Ss, newObservations)
         nextQsFromSs = self.QsFromSs(ann, nextSs)
         outQs = []
+        rationFR = []
         for Q, R, S, QFromS, nextQ, nextR, nextS, nextQFromS, step in zip(Qs, Rs, Ss, QsFromSs, nextQs, nextRs, nextSs, nextQsFromSs, stepsForAction):
             if step['done']:
                 newValue = step['reward']
             else:
                 F = self.discountFactor * self.Phi(nextQ, nextR, nextS, nextQFromS) - self.Phi(Q, R, S, QFromS)
+                if math.isnan(F):
+                    print('Error')
                 newValue = self.discountFactor * max(nextQ)[0] + step['reward'] + F
+                rationFR.append(abs(F/step['reward']))
             oldValue = Q[action][0]
             outQs.append([oldValue + learningRate * (newValue - oldValue)])
+        print('  mean F/reward', np.array(rationFR).mean())
         return (observations, outQs)
 
     def Phi(self, Q, R, S, QFromS):
@@ -90,12 +93,14 @@ class MainAnn:
 
     def trainSs(self, ann, stepsData):
         for action in self.actions:       
-            print('training Ss, action', action)
             stepsForAction = [step for step in stepsData if step['action'] == action]
-            print('  preparing Ss train samples', len(stepsForAction))
+            print('training Ss, action', action, 'samples', len(stepsForAction))
             (observations, Ss) = self.prepareSsTrainSamples(ann, action, stepsForAction)
-            print('  training Ss')
-            ann.trainSs(action, observations, Ss)
+            for _ in range(0, 100):
+                ann.trainSs(action, observations, Ss)
+        results = ann.calculateBatch(ann.Ss, [step['observation'] for step in stepsData])
+        errors = np.array([step['newObservation'] - result[step['action']] for step, result in zip(stepsData, results)])
+        print('  mean error', np.sqrt((errors**2).sum(axis=1)).mean())
 
     def prepareSsTrainSamples(self, ann, action, stepsForAction):
         observations = [step['observation'] for step in stepsForAction]
@@ -105,12 +110,15 @@ class MainAnn:
 
     def trainRs(self, ann, stepsData):
         for action in self.actions:       
-            print('training Rs, action', action)
             stepsForAction = [step for step in stepsData if step['action'] == action]
-            print('  preparing Rs train samples', len(stepsForAction))
+            print('training Rs, action', action, 'samples', len(stepsForAction))
             (observations, Rs) = self.prepareRsTrainSamples(ann, action, stepsForAction)
-            print('  training Rs')
-            ann.trainRs(action, observations, Rs)
+            for _ in range(0, 100):
+                ann.trainRs(action, observations, Rs)
+        results = ann.calculateBatch(ann.Rs, [step['observation'] for step in stepsData])
+        errors = np.array([[step['reward']] - result[step['action']] for step, result in zip(stepsData, results)])
+        print('  mean error', np.sqrt((errors**2).sum(axis=1)).mean())
+        
 
     def prepareRsTrainSamples(self, ann, action, stepsForAction):
         observations = [step['observation'] for step in stepsForAction]
