@@ -1,6 +1,8 @@
 import os.path
 import pickle
 import random
+import matplotlib.pyplot as plt
+import numpy as np
 
 import gym
 
@@ -19,8 +21,6 @@ class Main:
     def __init__(self, environmentName):
         self.steps = []
         self.environmentName = environmentName
-        self.saveStepsAfter = 1000
-        self.endingLength = 10
 
     def execute(self):
         env = gym.make(self.environmentName)
@@ -54,7 +54,7 @@ class Main:
         stepCount = 0
         while not done:
             state = stateMapper.getState(observation)
-            action = q.policy(state)
+            action = q.bestAction(state)
             nextObservation, reward, done, info = env.step(action)
             step = Step(observation, action, reward, nextObservation, done)
             self.steps.append(step)
@@ -67,8 +67,25 @@ class Main:
                 stateMapper.updateLimits(observations)
                 q = Q(env, stateMapper)
             
-            newQ = q.convergeQ(self.steps)
-            q = newQ
+            q = q.convergeQ(self.steps)                        
+            if stepCount % 100 == 0:
+                states = [stateMapper.getState(step.observation) for step in self.steps]
+                policy = q.policy(states)
+
+                values = np.zeros((stateMapper.ranges, stateMapper.ranges))
+                for state in policy.keys():
+                    values[state[1], state[0]] = max(q.Qs(state))
+                policies = np.zeros((stateMapper.ranges, stateMapper.ranges))
+                for state in policy.keys():
+                    policies[state[1], state[0]] = policy[state] + 1
+
+                plt.ion()
+                plt.figure(0)
+                plt.imshow(values, cmap='hot', interpolation='nearest')
+                plt.figure(1)
+                plt.imshow(policies, cmap='hot', interpolation='nearest')
+                plt.pause(0.001)
+            stepCount += 1
         
         self.saveSteps()
         print('Steps performed:'+str(stepCount)+'(end of episode). Steps data saved.')

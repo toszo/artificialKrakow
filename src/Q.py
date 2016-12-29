@@ -1,7 +1,5 @@
 import os.path
 import pickle
-import matplotlib.pyplot as plt
-import numpy as np
 
 class StateStep:
     def __init__(self, state, action, reward, nextState, done):
@@ -40,27 +38,23 @@ class Q:
             stepsDict[self.qDictKey(step.state, step.action)].append(step)
 
         q = self
+        count = 0
         while True:
+            count += 1
             nextQ = q.B_Q(stepsDict)
-            policy = q.policyDict(states)
-            nextPolicy = nextQ.policyDict(states)
-            if policy == nextPolicy:
-                if True:
-                    plotData = np.zeros((self.stateMapper.ranges, self.stateMapper.ranges))
-                    for state in policy.keys():
-                        plotData[state[1], state[0]] = policy[state] + 1
-                    plt.ion()
-                    plt.imshow(plotData, cmap='hot', interpolation='nearest')          
-                    plt.pause(0.001)
+            policy = q.policy(states)
+            nextPolicy = nextQ.policy(states)
+            if policy == nextPolicy:                
+                print('Converged in ' + str(count) + ' iterations.')
                 return nextQ
             else:               
                 q = nextQ
 
-    def policyDict(self, states):
+    def policy(self, states):
         policy = {}
         for state in states:
-            qs = self.Qs(state)
-            policy[state] = qs.index(max(qs))
+            qs = self.Qs(tuple(state))
+            policy[tuple(state)] = qs.index(max(qs))
         return policy
 
     def B_Q(self, stepsDict):
@@ -72,7 +66,7 @@ class Q:
 
         return Q(self.env, self.stateMapper, newQDict)
 
-    def policy(self, state):
+    def bestAction(self, state):
         Qs = self.Qs(state)
         return Qs.index(max(Qs))
 

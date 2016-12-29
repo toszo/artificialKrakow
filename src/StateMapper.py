@@ -9,8 +9,8 @@ class StateMapper:
         self.highFromData = []
         self.lowFromData = []
         self.environmentName = environmentName
-        self.ranges = 20
-        self.extendRangePercent = 0.1
+        self.ranges = 30
+        self.extendRangePercent = 0.01
 
     @staticmethod
     def fileName(environmentName):
