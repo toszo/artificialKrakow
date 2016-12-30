@@ -25,11 +25,51 @@ class Main:
     def execute(self):
         env = gym.make(self.environmentName)
         stateMapper = StateMapper.load(len(env.observation_space.high), self.environmentName)
-        q = Q.load(env, stateMapper)
         self.loadSteps()
+        q = Q.load(env, stateMapper).convergeQ(self.steps)
 
         while True:
-            self.runEpisode(env, q, stateMapper)
+            observation = env.reset()
+            done = False
+            stepCount = 0
+            while not done:
+                state = stateMapper.getState(observation)
+                action = q.bestAction(state)
+                nextObservation, reward, done, info = env.step(action)
+                step = Step(observation, action, reward, nextObservation, done)
+                self.steps.append(step)
+
+                observation = nextObservation
+                env.render()
+
+                observations = [step.observation for step in self.steps]
+                if not stateMapper.observationsWithinLimits(observations):
+                    stateMapper.updateLimits(observations)
+                    q = Q(env, stateMapper)
+                    print('Recreated Q')
+                
+                q = q.convergeQ(self.steps)                        
+                if stepCount % 50 == 0:
+                    states = [stateMapper.getState(step.observation) for step in self.steps]
+                    policy = q.policy(states)
+
+                    values = np.zeros((stateMapper.ranges, stateMapper.ranges))
+                    for state in policy.keys():
+                        values[state[1], state[0]] = max(q.Qs(state))
+                    policies = np.zeros((stateMapper.ranges, stateMapper.ranges))
+                    for state in policy.keys():
+                        policies[state[1], state[0]] = policy[state] + 1
+
+                    plt.ion()
+                    plt.figure(0)
+                    plt.imshow(values, cmap='hot', interpolation='nearest')
+                    plt.figure(1)
+                    plt.imshow(policies, cmap='hot', interpolation='nearest')
+                    plt.pause(0.001)
+                stepCount += 1
+            
+            self.saveSteps()
+            print('Steps performed:'+str(stepCount)+'(end of episode). Steps data saved.')
             
 
     def stepsFileName(self):
@@ -47,45 +87,3 @@ class Main:
                 self.steps = pickle.load(input)
                 print('Loaded ' + str(len(self.steps)) + ' steps.')
 
-
-    def runEpisode(self, env, q, stateMapper):
-        observation = env.reset()
-        done = False
-        stepCount = 0
-        while not done:
-            state = stateMapper.getState(observation)
-            action = q.bestAction(state)
-            nextObservation, reward, done, info = env.step(action)
-            step = Step(observation, action, reward, nextObservation, done)
-            self.steps.append(step)
-
-            observation = nextObservation
-            env.render()
-
-            observations = [step.observation for step in self.steps]
-            if not stateMapper.observationsWithinLimits(observations):
-                stateMapper.updateLimits(observations)
-                q = Q(env, stateMapper)
-            
-            q = q.convergeQ(self.steps)                        
-            if stepCount % 100 == 0:
-                states = [stateMapper.getState(step.observation) for step in self.steps]
-                policy = q.policy(states)
-
-                values = np.zeros((stateMapper.ranges, stateMapper.ranges))
-                for state in policy.keys():
-                    values[state[1], state[0]] = max(q.Qs(state))
-                policies = np.zeros((stateMapper.ranges, stateMapper.ranges))
-                for state in policy.keys():
-                    policies[state[1], state[0]] = policy[state] + 1
-
-                plt.ion()
-                plt.figure(0)
-                plt.imshow(values, cmap='hot', interpolation='nearest')
-                plt.figure(1)
-                plt.imshow(policies, cmap='hot', interpolation='nearest')
-                plt.pause(0.001)
-            stepCount += 1
-        
-        self.saveSteps()
-        print('Steps performed:'+str(stepCount)+'(end of episode). Steps data saved.')

@@ -15,7 +15,7 @@ class Q:
         self.stateMapper = stateMapper
         self.actions = range(self.env.action_space.n)
         self.qDict = {} if qDict is None else qDict
-        self.discountFactor = 0.9
+        self.discountFactor = 0.9999
         self.defaultQ = 0
 
     def fileName(env):
@@ -38,14 +38,11 @@ class Q:
             stepsDict[self.qDictKey(step.state, step.action)].append(step)
 
         q = self
-        count = 0
-        while True:
-            count += 1
+        while True:            
             nextQ = q.B_Q(stepsDict)
             policy = q.policy(states)
             nextPolicy = nextQ.policy(states)
             if policy == nextPolicy:                
-                print('Converged in ' + str(count) + ' iterations.')
                 return nextQ
             else:               
                 q = nextQ
@@ -67,8 +64,8 @@ class Q:
         return Q(self.env, self.stateMapper, newQDict)
 
     def bestAction(self, state):
-        Qs = self.Qs(state)
-        return Qs.index(max(Qs))
+        policy = self.policy([state])
+        return policy[tuple(state)]
 
     def Qs(self, state):
         keys = [self.qDictKey(state, action) for action in self.actions]

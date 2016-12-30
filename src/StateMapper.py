@@ -9,7 +9,7 @@ class StateMapper:
         self.highFromData = []
         self.lowFromData = []
         self.environmentName = environmentName
-        self.ranges = 30
+        self.ranges = 8
         self.extendRangePercent = 0.01
 
     @staticmethod
