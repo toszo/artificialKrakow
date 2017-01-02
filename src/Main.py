@@ -8,25 +8,21 @@ import gym
 
 from StateMapper import StateMapper
 from Q import Q
-
-class Step:
-    def __init__(self, observation, action, reward, nextObservation, done):
-        self.observation = observation
-        self.action = action
-        self.reward = reward
-        self.nextObservation = nextObservation
-        self.done = done
+from Persister import Persister
+from Step import Step
 
 class Main:
     def __init__(self, environmentName):
         self.steps = []
-        self.environmentName = environmentName
+        self.stepsPersister = Persister(environmentName + '.steps.dat')
+        self.environmentName = environmentName      
 
     def execute(self):
         env = gym.make(self.environmentName)
+        self.steps = self.stepsPersister.load([])
         stateMapper = StateMapper.load(len(env.observation_space.high), self.environmentName)
-        self.loadSteps()
-        q = Q.load(env, stateMapper).convergeQ(self.steps)
+        stateMapper.updateLimits([step.observation for step in self.steps])
+        q = Q(env, stateMapper).convergeQ(self.steps, 40)
 
         while True:
             observation = env.reset()
@@ -48,8 +44,8 @@ class Main:
                     q = Q(env, stateMapper)
                     print('Recreated Q')
                 
-                q = q.convergeQ(self.steps)                        
                 if stepCount % 50 == 0:
+                    q = q.convergeQ(self.steps)                     
                     states = [stateMapper.getState(step.observation) for step in self.steps]
                     policy = q.policy(states)
 
@@ -68,22 +64,6 @@ class Main:
                     plt.pause(0.001)
                 stepCount += 1
             
-            self.saveSteps()
+            self.stepsPersister.save(self.steps)
             print('Steps performed:'+str(stepCount)+'(end of episode). Steps data saved.')
-            
-
-    def stepsFileName(self):
-        return self.environmentName + '.steps.dat'
-        
-    def saveSteps(self):
-        with open(self.stepsFileName(), 'wb') as output:
-            pickle.dump(self.steps, output, pickle.HIGHEST_PROTOCOL)
-
-    def loadSteps(self):
-        if not os.path.isfile(self.stepsFileName()):
-            self.steps = []
-        else:
-            with open(self.stepsFileName(), 'rb') as input:
-                self.steps = pickle.load(input)
-                print('Loaded ' + str(len(self.steps)) + ' steps.')
-
+  

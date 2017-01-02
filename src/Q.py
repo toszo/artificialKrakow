@@ -16,21 +16,9 @@ class Q:
         self.actions = range(self.env.action_space.n)
         self.qDict = {} if qDict is None else qDict
         self.discountFactor = 0.9999
-        self.defaultQ = 0
+        self.defaultQ = 0   
 
-    def fileName(env):
-        return env.spec.id + '.q.dat'
-    def save(self):
-        with open(Q.fileName(self.env), 'wb') as output:
-            pickle.dump(self.qDict, output, pickle.HIGHEST_PROTOCOL)
-    @staticmethod
-    def load(env, stateMapper):
-        if not os.path.isfile(Q.fileName(env)):
-            return Q(env, stateMapper, {})
-        with open(Q.fileName(env), 'rb') as input:
-            return Q(env, stateMapper, pickle.load(input))
-
-    def convergeQ(self, steps):
+    def convergeQ(self, steps, policyNotChangedThreshold = 1):
         stateSteps = [StateStep(self.stateMapper.getState(step.observation), step.action, step.reward, self.stateMapper.getState(step.nextObservation), step.done) for step in steps]
         states = set([tuple(step.state) for step in stateSteps])
         stepsDict = {key: [] for key in [self.qDictKey(step.state, step.action) for step in stateSteps]}
@@ -38,14 +26,18 @@ class Q:
             stepsDict[self.qDictKey(step.state, step.action)].append(step)
 
         q = self
+        policyNotChangedCount = 0
         while True:            
             nextQ = q.B_Q(stepsDict)
             policy = q.policy(states)
             nextPolicy = nextQ.policy(states)
+            q = nextQ
             if policy == nextPolicy:                
-                return nextQ
+                policyNotChangedCount += 1
             else:               
-                q = nextQ
+                policyNotChangedCount = 0
+            if policyNotChangedCount >= policyNotChangedThreshold:
+                return nextQ
 
     def policy(self, states):
         policy = {}
