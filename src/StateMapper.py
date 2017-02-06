@@ -72,6 +72,9 @@ class StateMapper:
         return all(withinHighLimit) and all(withinLowLimit)
 
     def updateLimits(self, observations):
+        if len(observations) == 0:
+            return
+        
         observations_high = numpy.amax(observations, axis=0)
         observations_low = numpy.amin(observations, axis=0)
 

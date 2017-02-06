@@ -51,7 +51,7 @@ class Q:
         newQDict = {}
         for key in stepsDict.keys():
             steps = stepsDict[key]
-            newQDict[key] = sum([step.reward + self.discountFactor / len(steps) * max(self.Qs(step.nextState)) for step in steps])
+            newQDict[key] = sum([(step.reward + self.discountFactor * max(self.Qs(step.nextState))) / len(steps) for step in steps])
 
         return Q(self.env, self.stateMapper, newQDict)
 
